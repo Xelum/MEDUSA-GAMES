@@ -1,0 +1,36 @@
+// Independently loaded, deterministic interiors. Each location has its own layout.
+const STEP=7,DIR=[[0,1],[1,0],[0,-1],[-1,0]],key=(x,z)=>x+','+z;
+export const enclosed=s=>s.kind!=='caravan';
+export function entrance(s){return{x:s.x,z:s.z+(s.kind==='crypt'?10.3:s.kind==='cave'?9.5:s.kind==='tower'?4.8:4.8)}}
+const PLANS={
+ cave:[[0,0],[0,1],[1,1],[1,2],[0,2],[-1,2],[-1,3],[-2,3],[1,3]],
+ crypt:[[0,0],[0,1],[-1,1],[-2,1],[-2,2],[-1,2],[0,2],[1,2],[2,2],[2,3],[1,3],[0,3],[-1,3],[-2,3],[-2,4],[-1,4],[0,4],[1,4],[2,4]],
+ frostcave:[[0,0],[0,1],[0,2],[1,2],[2,2],[2,3],[1,3],[0,3],[-1,3],[-1,4],[-2,4],[0,4]],
+ marshcrypt:[[0,0],[0,1],[1,1],[2,1],[2,2],[1,2],[0,2],[-1,2],[-2,2],[-2,3],[-1,3],[0,3],[0,4],[1,4],[2,4],[2,5]],
+ witch:[[0,0],[0,1],[1,1]],campold:[[0,0],[0,1]],watchtower:[[0,0],[0,1],[1,1],[1,2]]
+};
+export function layoutFor(id){const cells=(PLANS[id]||PLANS.cave).map(([x,z])=>({x,z,k:key(x,z),links:[]})),map=new Map(cells.map(c=>[c.k,c]));let seed=[...id].reduce((n,c)=>Math.imul(n,31)+c.charCodeAt(0),17)>>>0;const rng=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};const seen=new Set(['0,0']),stack=[cells[0]];while(stack.length){const a=stack.at(-1),opts=DIR.map(([dx,dz])=>map.get(key(a.x+dx,a.z+dz))).filter(c=>c&&!seen.has(c.k));if(!opts.length){stack.pop();continue}const b=opts[Math.floor(rng()*opts.length)];a.links.push(b.k);b.links.push(a.k);seen.add(b.k);stack.push(b)}
+ // Reserve the first room for the exit and use the deepest room for treasure.
+ const queue=[cells[0]],distance=new Map([['0,0',0]]);for(let i=0;i<queue.length;i++)for(const k of queue[i].links)if(!distance.has(k)){distance.set(k,distance.get(queue[i].k)+1);queue.push(map.get(k))}const end=queue.at(-1),guardCount=id==='crypt'?5:id==='marshcrypt'?4:id==='frostcave'?3:id==='cave'?2:0,guards=queue.slice(2).filter(c=>c!==end).filter((_,i)=>i%Math.max(1,Math.floor((cells.length-3)/Math.max(1,guardCount-1)))===0).slice(0,Math.max(0,guardCount-1));if(guardCount)guards.push(end);return{cells,map,end,guards,distances:distance}}
+export function makeInterior(T,scene,visuals,site){const layout=layoutFor(site.id),root=new T.Group(),walls=[],lights=[],owned=[],mats=[],cave=site.kind==='cave',ice=site.id==='frostcave',swamp=site.id==='marshcrypt',wood=site.kind==='witch'||site.kind==='hut',wallColor=ice?0x738b98:swamp?0x48584a:wood?0x6e5034:cave?0x5a5d53:0x77766b;
+ scene.add(root);const geo=new T.BoxGeometry(1,1,1),rock=new T.IcosahedronGeometry(1,1),cone=new T.ConeGeometry(1,1,8);owned.push(geo,rock,cone);const material=(c,k='stone',e=0)=>{const m=visuals.material(c,k,{roughness:.93});if(e){m.emissive.set(c);m.emissiveIntensity=e}mats.push(m);return m};
+ const stone=material(wallColor,wood?'bark':'stone'),trim=material(wood?0x44372b:0x969184,wood?'bark':'stone'),floor=material(wood?0x806443:ice?0x667e8b:swamp?0x4d554a:0x63625a,wood?'bark':'stone'),dark=material(0x3c403a),glow=material(ice?0x8dddf9:swamp?0xa3d58d:0xffba6d,'stone',1.4);
+ function mesh(g,m,x,y,z,sx,sy,sz){const a=new T.Mesh(g,m);a.position.set(x,y,z);a.scale.set(sx,sy,sz);a.receiveShadow=true;root.add(a);return a}
+ const box=(m,x,y,z,sx,sy,sz)=>mesh(geo,m,x,y,z,sx,sy,sz);
+ function wall(x,z,w,d){walls.push({x,z,w,d});box(stone,x,2.1,z,w,4.2,d);box(trim,x,.18,z,w+.04,.36,d+.04);box(trim,x,3.95,z,w+.05,.25,d+.05)}
+ function lamp(x,z){box(dark,x,1.65,z,.12,.62,.12);const flame=mesh(cone,glow,x,2.10,z,.17,.42,.17),l=new T.PointLight(ice?0x9bdfff:swamp?0x9bd384:0xffb46a,16,12,2);l.position.set(x,2.2,z);root.add(l);lights.push({l,flame,x,z})}
+ for(const c of layout.cells){const x=c.x*STEP,z=c.z*STEP;box(floor,x,-.14,z,STEP,.28,STEP);box(dark,x,4.5,z,STEP,.28,STEP);
+  for(const [dx,dz] of DIR){const nx=x+dx*STEP/2,nz=z+dz*STEP/2,other=layout.map.get(key(c.x+dx,c.z+dz));if(other&&c.k>other.k)continue;const open=other&&c.links.includes(other.k);if(!open)wall(nx,nz,dx?.38:STEP+.38,dx?STEP+.38:.38);else{for(const side of [-1,1])wall(nx+(dz?side*2.52:0),nz+(dx?side*2.52:0),dx?.38:2.0,dx?2.0:.38);box(trim,nx,3.75,nz,dx?.55:3.2,.75,dx?3.2:.55)}}
+  lamp(x-2.45,z-2.45);
+  if(cave){for(let i=0;i<3;i++){const xx=x+(i%2?2.55:-2.55),zz=z+(i-1)*1.45;mesh(rock,stone,xx,.5,zz,.53,.68,.6);if(ice||i===1)mesh(cone,glow,xx,.6,zz+.35,.20,.95,.24)}}else if(!wood){for(let i=0;i<3;i++)box(trim,x-2.5+i*2.5,.035,z,.95,.06,.95);box(trim,x+2.45,.62,z+2.45,.68,1.2,.68)}
+ }
+ // A visible return portal, not an opening into unloaded terrain.
+ box(trim,0,1.25,-2.95,2.1,2.5,.25);box(dark,0,1.25,-2.78,1.65,2.25,.12);box(glow,0,1.25,-2.69,.055,1.6,.045);
+ const witch=site.kind==='witch'?{x:STEP,z:STEP}:null;if(witch){const {x,z}=witch;mesh(cone,material(0x43523b,'cloth'),x,.78,z,.65,1.5,.65);mesh(rock,material(0xa58a6e,'skin'),x,1.68,z,.18,.22,.18);mesh(cone,dark,x,2.04,z,.4,.48,.4);mesh(rock,dark,x-1.7,.45,z,.63,.49,.63);mesh(rock,glow,x-1.7,.82,z,.49,.10,.49)}
+ function cellAt(x,z){return layout.map.get(key(Math.round(x/STEP),Math.round(z/STEP)))}
+ function blocked(x,z){return !cellAt(x,z)||walls.some(w=>Math.abs(x-w.x)<w.w/2+.25&&Math.abs(z-w.z)<w.d/2+.25)}
+ function clear(x,z,tx,tz){const d=Math.hypot(tx-x,tz-z);for(let f=.15;f<d-.12;f+=.18)if(blocked(x+(tx-x)*f/d,z+(tz-z)*f/d))return false;return true}
+ function next(x,z,tx,tz){if(clear(x,z,tx,tz))return{x:tx,z:tz};const a=cellAt(x,z),b=cellAt(tx,tz);if(!a||!b||a===b)return{x:a?.x*STEP||0,z:a?.z*STEP||0};const q=[a.k],prev=new Map([[a.k,null]]);for(let i=0;i<q.length&&!prev.has(b.k);i++)for(const k of layout.map.get(q[i]).links)if(!prev.has(k)){prev.set(k,q[i]);q.push(k)}if(!prev.has(b.k))return{x,z};let k=b.k;while(prev.get(k)!==a.k)k=prev.get(k);const c=layout.map.get(k),cx=a.x*STEP,cz=a.z*STEP;if(Math.hypot(x-cx,z-cz)>1.1&&!clear(x,z,c.x*STEP,c.z*STEP))return{x:cx,z:cz};return{x:c.x*STEP,z:c.z*STEP}}
+ function update(x,z,t){for(const a of lights){a.l.visible=Math.hypot(x-a.x,z-a.z)<13;a.l.intensity=15+Math.sin(t*7+a.x)*2;a.flame.scale.y=.42+.045*Math.sin(t*9+a.z)}}
+ return {site,root,layout,blocked,clear,next,witch,spawn:{x:0,z:0},exit:{x:0,z:-2.3},treasure:{x:layout.end.x*STEP,z:layout.end.z*STEP},guards:layout.guards.map(c=>({x:c.x*STEP+1.15,z:c.z*STEP+.85})),update,dispose(){scene.remove(root);for(const g of owned)g.dispose();for(const m of mats)m.dispose()}}
+}
