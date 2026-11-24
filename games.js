@@ -37,7 +37,7 @@ window.MEDUSA_GAMES = [
     "id": "ashborn",
     "title": "Ashborn",
     "subtitle": "Dalle ceneri nasce il tuo viaggio.",
-    "description": "Survival 3D: barbaro con 19 regolazioni anatomiche ed estetiche avanzate, preset, costruzioni e mondo esplorabile.",
+    "description": "Survival 3D: crea il tuo barbaro con 82 varianti in 10 categorie, esplora, costruisci e modifica il mondo.",
     "genres": [
       "Survival",
       "Azione"
@@ -47,7 +47,7 @@ window.MEDUSA_GAMES = [
     "cover": "./giochi/ashborn/cover.svg",
     "playable": true,
     "featured": true,
-    "version": "0.9",
+    "version": "0.10",
     "url": "./giochi/ashborn/index.html"
   },
   {
