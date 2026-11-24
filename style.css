@@ -31,3 +31,6 @@
 
 /* v9 Forgefall featured preview */
 
+
+/* Centipede Arena catalog card */
+.game-card.has-cover .game-art{background-color:#101b13;background-position:center top!important;background-size:cover!important}.game-card.has-cover .game-card-copy{right:88px}.game-card.has-cover .tag{background:#aaff5520;border-color:#aaff5540;color:#b4ff70}.game-card.has-cover .game-play{background:#b4ff70;color:#13200f}@media(max-width:720px){.game-card.has-cover .game-card-copy{left:20px;right:79px;bottom:20px}.game-card.has-cover .game-play{right:16px;bottom:20px;width:50px;height:50px}}
