@@ -40,7 +40,7 @@ bench:{name:'Banco da lavoro',cost:{wood:8,stone:2},desc:'Sblocca nuove ricette 
 floor:{name:'Pavimento in tavole',cost:{plank:2},desc:'Fondazione quadrata 2 × 2.',hp:30,bench:true},
 wall:{name:'Parete di legno',cost:{plank:2},desc:'Protegge la casa. Si aggancia ai lati dei pavimenti.',hp:35,bench:true},
 door:{name:'Porta di legno',cost:{plank:3},desc:'Apri e chiudi con E.',hp:35,bench:true},
-roof:{name:'Tetto di legno',cost:{plank:3},desc:'Copre una fondazione e offre riparo.',hp:30,bench:true},
+roof:{name:'Tetto di legno',cost:{plank:3},desc:'Copre un pavimento con almeno una parete di sostegno e offre riparo.',hp:30,bench:true},
 fence:{name:'Recinzione',cost:{wood:3},desc:'Delimita la tua base.',hp:20,bench:true}
 };
 export const benchNear=(s,x=s.x,z=s.z)=>s.buildings.some(b=>b.kind==='bench'&&Math.hypot(b.x-x,b.z-z)<=22);
@@ -50,14 +50,16 @@ export function planPiece(s,kind,x,z,rot,ground,dry=true){
  rot=((Math.round(rot)%4)+4)%4;const edge=['wall','door','fence'].includes(kind);let cx=cell(x),cz=cell(z);
  if(edge){if(rot%2)cx=cell(x-1)+1;else cz=cell(z-1)+1}
  const floor=s.buildings.find(b=>b.kind==='floor'&&b.x===cx&&b.z===cz),adj=edge?s.buildings.filter(b=>b.kind==='floor'&&(rot%2?b.z===cz&&Math.abs(b.x-cx)===1:b.x===cx&&Math.abs(b.z-cz)===1)):[],base=floor||adj[0];
- const y=kind==='floor'?ground(cx,cz)+.12:kind==='roof'?(floor?.y??ground(cx,cz))+2.4:base?base.y+.14:ground(cx,cz);
+ const neighbor=s.buildings.find(b=>b.kind==='floor'&&Math.abs(b.x-cx)+Math.abs(b.z-cz)===2);const y=kind==='floor'?(neighbor?neighbor.y:ground(cx,cz)+.12):kind==='roof'?(floor?.y??ground(cx,cz))+2.4:base?base.y+.14:ground(cx,cz);
  const b={kind,x:cx,y,z:cz,rot};let reason='';
  if(!dry||Math.abs(cx)>LIMIT||Math.abs(cz)>LIMIT)reason='Terreno non valido';
  else if(Math.hypot(s.x-cx,s.z-cz)>7)reason='Troppo lontano';
  else if(s.buildings.length>=450)reason='Limite costruzioni raggiunto';
  else if(p.bench&&(!benchNear(s)||!benchNear(s,cx,cz)))reason='Serve un banco da lavoro vicino';
+ else if(kind==='floor'&&neighbor&&Math.abs(neighbor.y-ground(cx,cz))>1.15)reason='Terreno troppo irregolare';
  else if((kind==='wall'||kind==='door')&&!adj.length)reason='Serve un pavimento adiacente';
  else if(kind==='roof'&&!floor)reason='Serve un pavimento sotto il tetto';
+ else if(kind==='roof'&&!s.buildings.some(q=>['wall','door'].includes(q.kind)&&Math.abs(q.x-cx)+Math.abs(q.z-cz)===1))reason='Serve una parete o una porta di sostegno';
  else if(s.buildings.some(q=>q.x===cx&&q.z===cz&&(q.kind===kind||edge&&['wall','door','fence'].includes(q.kind))))reason='Spazio occupato';
  else if(!has(s,p.cost))reason='Materiali insufficienti';
  return {ok:!reason,reason,piece:b};
