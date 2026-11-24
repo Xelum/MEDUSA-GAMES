@@ -16,6 +16,13 @@
     artGrid.className = 'art-grid';
     for (let i = 0; i < 36; i++) artGrid.append(document.createElement('i'));
     art.append(artGrid);
+    if (game.cover) {
+      art.style.backgroundImage = `url("${game.cover}")`;
+      art.style.backgroundPosition = 'center';
+      art.style.backgroundSize = 'cover';
+      artGrid.hidden = true;
+      art.classList.add('custom-cover');
+    }
 
     const copy = document.createElement('div');
     copy.className = 'game-card-copy';
@@ -88,7 +95,7 @@
     window.Forgefall?.open?.();
   }
 
-  document.addEventListener('pointerdown', (event) => {
+  document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-open-game]');
     if (!button) return;
     event.preventDefault();
