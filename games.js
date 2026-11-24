@@ -37,7 +37,7 @@ window.MEDUSA_GAMES = [
     "id": "ashborn",
     "title": "Ashborn",
     "subtitle": "Dalle ceneri nasce il tuo viaggio.",
-    "description": "Survival 3D in terza persona: cinque biomi, fauna selvaggia, raccolta con strumenti specializzati, crafting ed equipaggiamento rapido.",
+    "description": "Survival 3D in terza persona: esplora cinque biomi, raccogli risorse, lavora al banco e costruisci il tuo rifugio modulare.",
     "genres": [
       "Survival",
       "Azione"
@@ -47,7 +47,7 @@ window.MEDUSA_GAMES = [
     "cover": "./giochi/ashborn/cover.svg",
     "playable": true,
     "featured": true,
-    "version": "0.2",
+    "version": "0.3",
     "url": "./giochi/ashborn/index.html"
   },
   {
