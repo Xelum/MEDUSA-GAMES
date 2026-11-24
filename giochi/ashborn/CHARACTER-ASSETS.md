@@ -9,3 +9,6 @@ Source repository: https://github.com/makehumancommunity/makehuman
 Original copyright holders at CC0 release: Data Collection AB, Joel Palmius, Jonas Hauquier.
 License: https://creativecommons.org/publicdomain/zero/1.0/
 Ashborn adaptation: body-only indexed mesh (helper geometry excluded), quantized position/morph/UV/index/weight data, 13-bone simplified rig, original outfit, hair and beard geometry, custom coloration, original animations and integration. The MakeHuman asset is not an AI-generated image and is not a scan of a particular person.
+
+## 0.8 — Fitted character prototype
+The original CC0 helper-skirt topology, male/muscle morphs and weights are included in `garment-data.js`; a new waist-conforming kilt uses real body cross-sections and source garment shape, with shared skeleton skinning. Hair and beard overlays are clipped against continuous contour fields on the body mesh; locks are anchored to the fitted scalp. All attachment meshes with skin weights use the body skeleton. `character-lab.html` provides live WebGL diagnostics and pose preview without touching saves. CPU Three.js verification: 18 physique/hairstyle profiles, five poses each (90), finite deformed vertices, normalized weights and shared skeleton. Software visual projection was inspected; final hardware WebGL appearance has not been tested from the development environment.
