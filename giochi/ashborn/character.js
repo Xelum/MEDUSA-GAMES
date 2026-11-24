@@ -1,6 +1,7 @@
 import {HUMAN_DATA as D} from './human-data.js?v=7';
 import {GARMENT as G} from './garment-data.js?v=8';
 import {detail,appearanceColors} from './appearance.js?v=9';
+import {MUSCLES,OUTFITS,EYES,variantMorph} from './choices.js?v=10';
 const TAU=Math.PI*2,clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const decode=s=>{const abc='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',out=new Uint8Array(Math.floor(s.length*3/4)-(s.endsWith('==')?2:s.endsWith('=')?1:0));let j=0;for(let i=0;i<s.length;i+=4){const n=(abc.indexOf(s[i])<<18)|(abc.indexOf(s[i+1])<<12)|((abc.indexOf(s[i+2])&63)<<6)|(abc.indexOf(s[i+3])&63);out[j++]=n>>16&255;if(j<out.length)out[j++]=n>>8&255;if(j<out.length)out[j++]=n&255}return out};
 const p16=s=>new Int16Array(decode(s).buffer),base=p16(D.p),morph=p16(D.m),uvRaw=p16(D.uv),tri=new Uint16Array(decode(D.i).buffer),bi=decode(D.bi),bw=decode(D.bw);
@@ -8,7 +9,7 @@ const scale=2.30/(9.3003+8.181),floor=-8.181;
 export const characterInfo={vertices:D.count,triangles:tri.length/3,bones:D.bones.length};
 export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const body=new T.Group();root.add(body);const ownG=[],ownM=[],V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z),Q=()=>new T.Quaternion(),qx=a=>Q().setFromAxisAngle(V(1,0,0),a);
- const muscle=clamp(([.12,.57,.96][ch.build]??.57)+detail(ch,'muscleDetail')*.24,0,1.2),faceScale=[1,1.08,.92][ch.face]??1,style=ch.outfit??0;const palette=appearanceColors(T,ch,skin,hair);skin=palette.skin;hair=palette.hair;const q=k=>detail(ch,k),ga=(v,c,w)=>Math.exp(-(((v-c)/w)**2));
+ ch=variantMorph(ch);const muscle=clamp((MUSCLES[ch.build]??.57)+detail(ch,'muscleDetail')*.24,0,1.2),faceScale=[1,1.08,.92][ch.face]??1,style=ch.outfit??0;const palette=appearanceColors(T,ch,skin,hair);skin=palette.skin;hair=palette.hair;const q=k=>detail(ch,k),ga=(v,c,w)=>Math.exp(-(((v-c)/w)**2));
  function source(x,y,z){
  const ox=x,oy=y,oz=z,ax=Math.abs(ox),side=Math.sign(ox);
  if(oy>7.1){const a=clamp((oy-7.1)/.65,0,1),head=q('headSize')*.065*a;x*=1+(faceScale-1)*a+head;y+=(oy-8.15)*head;z+=(oz-.25)*head;
@@ -26,7 +27,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   colors.push(shade.r,shade.g,shade.b);
  }
  function mat(color,kind,extra={}){const m=visuals.material(color,kind,extra);ownM.push(m);return m}
- const attachments=[];const skinMat=mat(skin,'skin',{roughness:.78,bumpScale:.0025,vertexColors:true}),leather=mat([0x634329,0x514035,0x514a31,0x704337][style]||0x634329,'cloth',{roughness:.94,bumpScale:.018}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.86,bumpScale:.007}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.88,bumpScale:.005});ownM.push(metal);
+ const attachments=[];const skinMat=mat(skin,'skin',{roughness:.78,bumpScale:.0025,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.94,bumpScale:.018}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.86,bumpScale:.007}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.88,bumpScale:.005});ownM.push(metal);
  const geometry=new T.BufferGeometry();ownG.push(geometry);geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(bi),4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(Float32Array.from(bw,x=>x/255),4));
  // Assign clothing directly to the continuous mesh, so the body remains covered even during movement.
  const bins=Array.from({length:5},()=>[]);
@@ -71,7 +72,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  function crossSection(y){const out=[];for(let j=0;j<tri.length;j+=3){const ids=[tri[j],tri[j+1],tri[j+2]];if(ids.some(i=>armWeight(i)>.25))continue;const f=ids.map(i=>points[i]),q=[];for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);q.push([a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t])}}if(q.length===2)out.push(q)}return out}
  const beltY=source(0,2.12,0).y,midZ=.036;
  function radial(section,s,c){let far=0;for(const [[ax,az],[bx,bz]] of section){const dx=bx-ax,dz=bz-az,zz=az-midZ,den=s*dz-c*dx;if(Math.abs(den)<1e-9)continue;const t=(ax*dz-zz*dx)/den,u=(ax*c-zz*s)/den;if(t>0&&u>=-.0001&&u<=1.0001)far=Math.max(far,t)}return far}
- const skirtP=[],skirtUV=[],skirtW=[],skirtBins=[[],[]],N=72,levels=[2.26,2.12,1.78,1.36,.85,.28,-.32,-.95,-1.42];
+ const skirtP=[],skirtUV=[],skirtW=[],skirtBins=[[],[]],N=72,levels=[2.26,2.12,1.78,1.36,.85,.28,-.32,-.95,-1.42].map((y,i)=>i<3?y:y+([0,0,0,0,-.18,.16,-.09,.10][style]||0)*(i-2)/6);
  // Source CC0 helper skirt gives the flare; fit it to the body at each slice.
  const helper=G.positions.map((p,i)=>source(...p.map((x,k)=>x+G.morph[i][k]*muscle)));
  for(let j=0;j<levels.length;j++){const y=source(0,levels[j],0).y,section=crossSection(y);
@@ -110,28 +111,32 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  }
  const hairStyle=ch.hair||0;
  const hairline=(x,y,z)=>7.81+.86*clamp((z-.05)/.95,0,1)+.095*Math.cos(x*4);
- const scalpField=(x,y,z)=>Math.min(y-hairline(x,y,z),y-7.6,1.06-Math.abs(x),hairStyle===4?.40-Math.abs(x)+.25*clamp((.3-z)*2,0,1):2);
- const cap=hairStyle?smoothOverlay(scalpField,hairMat,(p,f)=>.0015+clamp(f*.030,0,hairStyle===1?.009:.030),undefined,'Continuous fitted scalp'):[];
+ const scalpField=(x,y,z)=>Math.min(y-hairline(x,y,z),y-7.6,1.06-Math.abs(x),[4,8].includes(hairStyle)?(hairStyle===8?.27:.40)-Math.abs(x)+.25*clamp((.3-z)*2,0,1):2);
+ const cap=hairStyle?smoothOverlay(scalpField,hairMat,(p,f)=>.0015+clamp(f*.030,0,hairStyle===1?.009:hairStyle===8?.065:.030),undefined,'Continuous fitted scalp'):[];
  function nearestAnchor(list,p){let best=null,d=Infinity;for(const a of list){const v=a.point.distanceToSquared(p);if(v<d){d=v;best=a}}return best}
  // Tapered coherent locks: start under the surface and follow the cap with no independent floating roots.
  function lock(pts,radii,m){const curve=new T.CatmullRomCurve3(pts),p=[],u=[],ix=[],n=16,sides=10,frames=curve.computeFrenetFrames(n,false);for(let i=0;i<=n;i++){const t=i/n,q=curve.getPointAt(t),j=Math.min(radii.length-2,Math.floor(t*(radii.length-1))),f=t*(radii.length-1)-j,r=radii[j]*(1-f)+radii[j+1]*f;for(let k=0;k<=sides;k++){const a=k/sides*TAU,v=q.clone().addScaledVector(frames.normals[i],Math.cos(a)*r).addScaledVector(frames.binormals[i],Math.sin(a)*r*.83);p.push(v.x,v.y,v.z);u.push(k/sides,t*3)}}for(let i=0;i<n;i++)for(let k=0;k<sides;k++){const a=i*(sides+1)+k,b=a+sides+1;ix.push(a,b,a+1,b,b+1,a+1)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(u,2));g.setIndex(ix);g.computeVertexNormals();return add(body,g,m)}
  if(hairStyle>=2&&cap.length){const back=cap.filter(a=>a.source[2]<.32),rear=back.length?back:cap;
-  if(hairStyle===2){for(let i=0;i<15;i++){const t=i/14,angle=(t-.5)*Math.PI,side=Math.sin(angle),goal=source(side*.68,8.45+Math.cos(angle)*.29,.18-Math.cos(angle)*.48),anchor=nearestAnchor(rear,goal),p=anchor.point.clone(),len=(.24+.07*Math.cos(angle))*(1+q('hairLength')*.35);
+  if(hairStyle===2||hairStyle===7){for(let i=0;i<15;i++){const t=i/14,angle=(t-.5)*Math.PI,side=Math.sin(angle),goal=source(side*.68,8.45+Math.cos(angle)*.29,.18-Math.cos(angle)*.48),anchor=nearestAnchor(rear,goal),p=anchor.point.clone(),len=(hairStyle===7?.37:.24)+.07*Math.cos(angle);
    lock([p.clone().lerp(points[anchor.index],.8),p.clone().add(V(side*.025,-.052,-.028)),p.clone().add(V(side*.042,-len*.65,-.043)),p.clone().add(V(side*.046,-len,-.026))],[.012,.034,.031,.003],i%4===0?hairLight:hairMat)
   }}
-  if(hairStyle===3||hairStyle===5){const n=hairStyle===5?2:1;for(let k=0;k<n;k++){const goal=source(n===1?0:k===0?-.45:.45,8.46,-.39),a=nearestAnchor(rear,goal),p=a.point.clone(),end=p.clone().add(V(0,-.31*(1+q('hairLength')*.35),-.075));const center=[p.clone().lerp(points[a.index],.85),p.clone().add(V(0,-.048,-.043)),p.clone().add(V(0,-.17*(1+q('hairLength')*.35),-.11)),end];lock(center,[.022,.040,.026,.008],hairMat);
-   if(hairStyle===5)for(let j=0;j<3;j++)lock(Array.from({length:13},(_,i)=>{const t=i/12,q=new T.CatmullRomCurve3(center).getPoint(t),ang=t*TAU*3+j*TAU/3,r=.016*Math.sin(Math.PI*t)*.8;return q.add(V(Math.cos(ang)*r,0,Math.sin(ang)*r))}),[.008,.015,.012,.002],j===1?hairLight:hairMat);
+  if([3,5,9].includes(hairStyle)){const n=hairStyle===5?2:1;for(let k=0;k<n;k++){const goal=source(n===1?0:k===0?-.45:.45,8.46,-.39),a=nearestAnchor(rear,goal),p=a.point.clone(),end=p.clone().add(V(0,-.31*(1+q('hairLength')*.35),-.075));const center=[p.clone().lerp(points[a.index],.85),p.clone().add(V(0,-.048,-.043)),p.clone().add(V(0,-.17*(1+q('hairLength')*.35),-.11)),end];lock(center,[.022,.040,.026,.008],hairMat);
+   if(hairStyle===5||hairStyle===9)for(let j=0;j<3;j++)lock(Array.from({length:13},(_,i)=>{const t=i/12,q=new T.CatmullRomCurve3(center).getPoint(t),ang=t*TAU*3+j*TAU/3,r=.016*Math.sin(Math.PI*t)*.8;return q.add(V(Math.cos(ang)*r,0,Math.sin(ang)*r))}),[.008,.015,.012,.002],j===1?hairLight:hairMat);
    add(body,new T.SphereGeometry(.013,12,8),metal,end.x,end.y+.022,end.z);
   }}
  }
+ if(hairStyle===6&&cap.length){const a=nearestAnchor(cap,source(0,9.12,-.26)),p=a.point.clone(),end=p.clone().add(V(0,.06,-.045));lock([p.clone().lerp(points[a.index],.8),p.clone().add(V(0,.025,-.01)),end,p.clone().add(V(0,.05,-.07))],[.020,.048,.048,.008],hairMat);add(body,new T.SphereGeometry(.016,12,8),metal,p.x,p.y+.012,p.z-.012)}
  const beard=ch.beard||0;
- if(beard){const field=(x,y,z)=>{const ax=Math.abs(x),jaw=Math.min(y-6.91,7.43+ax*.72-y,.77-ax,z-.59),mustache=Math.min(.42-ax,y-7.49,7.65-.09*ax-y,z-1.18);return Math.max(jaw,mustache)};
-  smoothOverlay(field,hairMat,(p,f)=>.001+clamp(f*.035,0,beard===1?.005*(1+q('beardLength')*.6):.016),(v,p,f)=>{if(beard>=2&&p[1]<7.35){const t=clamp((7.35-p[1])/.43,0,1),center=clamp(1-Math.abs(p[0])/.75,0,1);v.y-=(beard===3?.16:.09)*(1+q('beardLength')*.55)*t*center;v.z+=.018*t*center}},'Continuous fitted beard')
+ if(beard){const field=(x,y,z)=>{const ax=Math.abs(x),jaw=Math.min(y-6.91,7.43+ax*.72-y,.77-ax,z-.59),mustache=Math.min(.42-ax,y-7.49,7.65-.09*ax-y,z-1.18);return beard===4?mustache:beard===5?Math.max(mustache,Math.min(jaw,.28-ax)):Math.max(jaw,mustache)};
+  smoothOverlay(field,hairMat,(p,f)=>.001+clamp(f*.035,0,beard===6?.0018:beard===1?.005*(1+q('beardLength')*.6):.016),(v,p,f)=>{if([2,3,7].includes(beard)&&p[1]<7.35){const t=clamp((7.35-p[1])/.43,0,1),center=clamp(1-Math.abs(p[0])/.75,0,1);v.y-=(beard===7?.22:beard===3?.16:.09)*(1+q('beardLength')*.55)*t*center;v.z+=.018*t*center}},'Continuous fitted beard')
  }
  // Tunic and winter coat use the underlying continuous skinned body surface.
  if(eq.wintercoat)overlay((x,y,z)=>y>4.8&&y<6.65&&Math.abs(x)<2.6,fur,.014,undefined,'Fitted fur collar');
- const iris=new T.MeshStandardMaterial({color:[0x60422b,0x547548,0x668fa9,0x858f95,0xad7738][ch.eyes]||0x60422b,roughness:.32}),eyeWhite=new T.MeshStandardMaterial({color:0xd8d4c5,roughness:.42}),pupil=new T.MeshStandardMaterial({color:0x171612,roughness:.32});ownM.push(iris,eyeWhite,pupil);
+ const iris=new T.MeshStandardMaterial({color:EYES[ch.eyes]||0x60422b,roughness:.32}),eyeWhite=new T.MeshStandardMaterial({color:0xd8d4c5,roughness:.42}),pupil=new T.MeshStandardMaterial({color:0x171612,roughness:.32});ownM.push(iris,eyeWhite,pupil);
  for(const side of ['l','r']){const c=source(...D.joints[side+'-eye'].p);const e=add(body,new T.SphereGeometry(.016,24,16),eyeWhite,c.x,c.y,c.z);add(body,new T.SphereGeometry(.008,18,12),iris,c.x,c.y,c.z+.015);add(body,new T.SphereGeometry(.0038,12,8),pupil,c.x,c.y,c.z+.021);const sign=side==='l'?1:-1;smoothOverlay((x,y,z)=>Math.min(1-((source(x,y,z).x-c.x)/.027)**2-((y-(8.39+.045*Math.cos(x*8)))/.045)**2,z-1.02),hairMat,()=>.0015,undefined,'Fitted eyebrow')}
- if(ch.mark){const m=new T.MeshStandardMaterial({color:ch.mark===1?0x804f41:ch.mark===2?0x274f71:ch.mark===3?0x8c392b:0x3f4231,roughness:.95,transparent:true,opacity:.72+q('paintStrength')*.27,depthWrite:false});ownM.push(m);overlay((x,y,z)=>z>.8&&y>7.56&&y<8.54&&(ch.mark===1?x>0&&Math.abs(x-(.38+(y-8)*.25))<.07:Math.abs(Math.abs(x)-(.43+(y-8)*.12))<.11&&(ch.mark!==4||y<8.08)),m,.0018)}
+ if(ch.mark){const m=new T.MeshStandardMaterial({color:[0,0x804f41,0x274f71,0x8c392b,0x3f4231,0x25201c,0xc7c0a9,0x895446,0x35566a,0x704238][ch.mark]||0x3f4231,roughness:.95,transparent:true,opacity:.78,depthWrite:false});ownM.push(m);const kind=ch.mark;
+ smoothOverlay((x,y,z)=>{const ax=Math.abs(x),base=z-.8,cheek=Math.min(y-7.56,8.54-y,.11-Math.abs(ax-(.43+(y-8)*.12)));let field=cheek;if(kind===1)field=Math.min(x,y-7.56,8.54-y,.06-Math.abs(x-(.38+(y-8)*.25)));if(kind===4)field=Math.min(cheek,8.08-y);if(kind===5)field=Math.min(.10-Math.abs(y-8.15),.84-ax);if(kind===6)field=Math.min(.20-Math.abs(ax-.49),y-7.75,8.29-y);if(kind===7)field=Math.min(x,.06-Math.abs(x-(.39+(y-8.38)*.25)),y-8.14,8.64-y);if(kind===8)field=Math.min(.23-Math.abs(ax-.49),Math.max(.045-Math.abs(y-7.85),.045-Math.abs(y-8.02)));if(kind===9)field=Math.min(y-8.34,8.73-y,Math.max(.045-Math.abs(x),.045-Math.abs(Math.abs(x)-(y-8.34)*.58)));return Math.min(base,field)},m,()=>.0018,undefined,'Fitted face marking')
+ }
+
  return {body,arms:[bones[1],bones[4]],legs:[bones[7],bones[10]],hand,skinMat,mesh,skeleton,attachments,animate,dispose(){for(const g of ownG)g.dispose();for(const m of ownM)m.dispose();skeleton.dispose()}};
 }
