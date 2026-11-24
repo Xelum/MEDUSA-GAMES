@@ -60,7 +60,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  function vertexWeights(i){const w=Array(13).fill(0);for(let j=0;j<4;j++)w[bi[i*4+j]]+=bw[i*4+j]/255;return w}
  // Exact horizontal cross-section of the anatomical body (ray/segment intersections).
  // Belt edge is conformal to the actual torso; skirt flares gradually from the fitted rim.
- function crossSection(y){const out=[];for(let j=0;j<tri.length;j+=3){const f=[points[tri[j]],points[tri[j+1]],points[tri[j+2]]],q=[];for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);q.push([a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t])}}if(q.length===2)out.push(q)}return out}
+ function crossSection(y){const out=[];for(let j=0;j<tri.length;j+=3){const ids=[tri[j],tri[j+1],tri[j+2]];if(ids.some(i=>armWeight(i)>.25))continue;const f=ids.map(i=>points[i]),q=[];for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);q.push([a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t])}}if(q.length===2)out.push(q)}return out}
  const beltY=source(0,2.12,0).y,midZ=.036;
  function radial(section,s,c){let far=0;for(const [[ax,az],[bx,bz]] of section){const dx=bx-ax,dz=bz-az,zz=az-midZ,den=s*dz-c*dx;if(Math.abs(den)<1e-9)continue;const t=(ax*dz-zz*dx)/den,u=(ax*c-zz*s)/den;if(t>0&&u>=-.0001&&u<=1.0001)far=Math.max(far,t)}return far}
  const skirtP=[],skirtUV=[],skirtW=[],skirtBins=[[],[]],N=72,levels=[2.26,2.12,1.78,1.36,.85,.28,-.32,-.95,-1.42];
