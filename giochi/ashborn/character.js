@@ -9,7 +9,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const muscle=[.12,.57,.96][ch.build]??.57,faceScale=[1,1.08,.92][ch.face]??1,style=ch.outfit??0;
  function source(x,y,z){if(y>7.1){const a=clamp((y-7.1)/.65,0,1);x*=1+(faceScale-1)*a}return V(x*scale,(y-floor)*scale,z*scale)}
  const points=[],raw=[],positions=[],uv=[],colors=[];
- const skinBase=new T.Color(skin),lip=new T.Color(0xa26354),shade=new T.Color(),white=new T.Color(0xffffff);
+ const shade=new T.Color();
  for(let i=0;i<D.count;i++){let x=(base[i*3]+morph[i*3]*muscle)/1000,y=(base[i*3+1]+morph[i*3+1]*muscle)/1000,z=(base[i*3+2]+morph[i*3+2]*muscle)/1000;raw.push([x,y,z]);const p=source(x,y,z);points.push(p);positions.push(p.x,p.y,p.z);uv.push(uvRaw[i*2]/16000,uvRaw[i*2+1]/16000);
   const warm=Math.max(0,1-Math.abs(y-7.65)/.55)*Math.max(0,1-Math.abs(Math.abs(x)-.43)/.3)*clamp((z-.9)*2,0,1);
   const tone=.94+.055*Math.sin(x*15+y*7+z*8)+.025*Math.sin(x*83+z*53);shade.setRGB(clamp(tone+warm*.035,.75,1.06),clamp(tone-warm*.055,.72,1.02),clamp(tone-warm*.07,.7,1.02));
@@ -39,15 +39,15 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  // Natural standing pose, with independent upper and lower limbs.
  function absRotation(i,child,desired){return Q().setFromUnitVectors(jointPos[child].clone().sub(jointPos[i]).normalize(),desired.normalize())}
  function pair(i,j,k,d1,d2,tip=null){const a=absRotation(i,j,d1),b=absRotation(j,k,d2);bones[i].quaternion.copy(a);bones[j].quaternion.copy(a.clone().invert().multiply(b));bones[k].quaternion.copy(tip?b.clone().invert().multiply(tip):Q());return b}
- let neutralHand=[];
- function animate(phase=0,speed=0,jumping=false,attack=0,time=0){const walk=clamp(speed/3.6,0,1),run=clamp((speed-3.6)/3.2,0,1),amp=walk*(.42+run*.23);
+ let neutralHand=[],neutralFoot=null;
+ function animate(phase=0,speed=0,jumping=false,attack=0,time=0){const walk=clamp(speed/3.6,0,1),run=clamp((speed-3.6)/3.2,0,1),amp=walk*(.42+run*.23);let lowest=Infinity;
   for(let i=0;i<2;i++){const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,w=Math.sin(phase+i*Math.PI),c=Math.cos(phase+i*Math.PI),legAngle=jumping?(i===0?-.5:.24):w*amp,armAngle=jumping?-.48:-w*amp*.78,hit=i===0?0:attack,upper=hit>0?-1.4*hit:armAngle;
    const leg1=V(side*.042,-1,0).applyQuaternion(qx(legAngle)),leg2=V(side*.02,-1,0).applyQuaternion(qx(legAngle+(!jumping?Math.max(0,-c)*walk*(.52+run*.25):.57)));
-   pair(l,l+1,l+2,leg1,leg2,qx(jumping?.16:legAngle*.18));
+   pair(l,l+1,l+2,leg1,leg2,qx(jumping?.16:legAngle*.18));const footY=jointPos[l].y+leg1.y*jointPos[l+1].distanceTo(jointPos[l])+leg2.y*jointPos[l+2].distanceTo(jointPos[l+1]);lowest=Math.min(lowest,footY);
    const arm1=V(side*.20,-1,.02).applyQuaternion(qx(upper)),arm2=V(side*.055,-1,.10).applyQuaternion(qx(upper-(hit>0?.55*hit:.13+walk*.18)));
    const r=pair(a,a+1,a+2,arm1,arm2);if(!neutralHand[i])neutralHand[i]=r.clone();
   }
-  body.position.y=Math.abs(Math.sin(phase))*walk*.027+(1-walk)*Math.sin(time*2.1)*.006;
+  if(neutralFoot===null)neutralFoot=lowest;body.position.y=(jumping?0:clamp(neutralFoot-lowest,-.25,.035))+(1-walk)*Math.sin(time*2.1)*.006;
  }
  animate();
  const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
