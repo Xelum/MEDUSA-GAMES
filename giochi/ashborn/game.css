@@ -45,3 +45,5 @@
 
 /* Combat reticle, exact center of the rendered camera. */
 .combat-crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:15px;height:15px;color:#fff7e6;pointer-events:none;z-index:5;filter:drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px #000);opacity:.88}.combat-crosshair:before,.combat-crosshair:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:currentColor;border-radius:1px}.combat-crosshair:before{width:15px;height:2px}.combat-crosshair:after{width:2px;height:15px}.combat-crosshair[data-status=ready]{color:#a9ed94;opacity:1}.combat-crosshair[data-status=blocked]{color:#e2a06f;opacity:1}.combat-crosshair[hidden]{display:none!important}
+
+.quest small{line-height:1.45;letter-spacing:.045em}.quest #site-count{color:#f0d197}
