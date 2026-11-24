@@ -37,7 +37,7 @@ window.MEDUSA_GAMES = [
     "id": "ashborn",
     "title": "Ashborn",
     "subtitle": "Dalle ceneri nasce il tuo viaggio.",
-    "description": "Survival 3D: barbaro anatomico personalizzabile, animazioni scheletriche, costruzione, terreno modificabile e antichi santuari.",
+    "description": "Survival 3D: barbaro anatomico, capelli e abiti adattati al corpo, animazioni scheletriche, costruzione ed esplorazione.",
     "genres": [
       "Survival",
       "Azione"
@@ -47,7 +47,7 @@ window.MEDUSA_GAMES = [
     "cover": "./giochi/ashborn/cover.svg",
     "playable": true,
     "featured": true,
-    "version": "0.7",
+    "version": "0.8",
     "url": "./giochi/ashborn/index.html"
   },
   {
