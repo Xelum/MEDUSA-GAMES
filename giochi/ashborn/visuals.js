@@ -10,7 +10,7 @@ export function createVisuals(T,renderer,coarse){
    else if(kind==='skin')a=Math.sin(u*7+v*3)*3+Math.sin(u*19-v*11)*2;
    else a=Math.sin(u*7+v*4)*10+Math.sin(u*18-v*11)*7+Math.cos(u*33+v*19)*6+Math.sin(u*2-v*3)*12;
    const n=clamp((kind==='skin'?217:185)+a+(rnd()-.5)*(kind==='skin'?12:48),0,255);im.data[i]=n;im.data[i+1]=n;im.data[i+2]=n;im.data[i+3]=255;
-  }c.putImageData(im,0,0);const t=new T.CanvasTexture(canvas);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;
+  }c.putImageData(im,0,0);const t=new T.CanvasTexture(canvas);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;
  }
  const maps={bark:texture('bark'),cloth:texture('cloth'),skin:texture('skin'),stone:texture('stone'),earth:texture('earth',512)};
  function material(color,kind,extra={}){const map=maps[kind];return new T.MeshStandardMaterial({color,roughness:kind==='skin'?.7:.93,map,bumpMap:map,bumpScale:kind==='skin'?.012:kind==='bark'?.075:.035,...extra})}
@@ -82,22 +82,27 @@ export function createVisuals(T,renderer,coarse){
   function limb(a,b,radius){const A=new T.Vector3(...a),B=new T.Vector3(...b),d=B.clone().sub(A);const m=object(g,trunkGeo,bark);m.position.copy(A.clone().add(B).multiplyScalar(.5));m.scale.set(radius,d.length(),radius);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return m}
   const height=(4.6+r(1)*1.4)*size;
   limb([0,-.16,0],[.10,height*.63,-.08],.32*size);limb([.1,height*.55,-.08],[.19,height,0],.17*size);
-  const foliage=bi===0||kind==='oak'||bi===4;
+  const foliage=bi===0||kind==='oak'||bi===4;const canopy=bi===0&&r(42)>.76?[0x78603e,0x9c7745,0xa99458]:bio.tree;
   if(bi===2){for(let i=0;i<8;i++){const a=i*TAU/8;const x=Math.cos(a)*1.45,z=Math.sin(a)*1.45;limb([.19,height,0],[x,height-.45,z],.055);const m=object(g,leafGeo,mat(bio.tree[i%3],'earth'),x*.78,height-.25,z*.78);m.scale.set(.25,.12,1.15);m.rotation.y=-a+Math.PI/2}}
-  else if(foliage){for(let i=0;i<7;i++){const a=i*TAU/7+r(i+5)*.7,x=Math.sin(a)*(1+r(i+20))*.85*size,z=Math.cos(a)*(1+r(i+21))*.85*size,y=height*(.66+r(i+30)*.30);limb([0,height*.42,0],[x,y,z],.10*size);const m=leaves(g,bio.tree[i%3],i,x,y,z,1.45*size,1.1*size,1.45*size);m.rotation.y=a}leaves(g,bio.tree[2],3,.12,height,.1,1.55*size,1.35*size,1.55*size)}
-  else {for(let i=0;i<6;i++){const f=i/6,y=height*(.42+f*.57),m=leaves(g,bio.tree[i%3],i,Math.sin(i*2)*.12,y,Math.cos(i*2)*.13,(1.95-f*1.5)*size,1.12-f*.55,(1.8-f*1.38)*size);m.rotation.y=r(i+12)*TAU}}
+  else if(foliage){for(let i=0;i<7;i++){const a=i*TAU/7+r(i+5)*.7,x=Math.sin(a)*(1+r(i+20))*.85*size,z=Math.cos(a)*(1+r(i+21))*.85*size,y=height*(.66+r(i+30)*.30);limb([0,height*.42,0],[x,y,z],.10*size);const m=leaves(g,canopy[i%3],i,x,y,z,1.45*size,1.1*size,1.45*size);m.rotation.y=a}leaves(g,canopy[2],3,.12,height,.1,1.55*size,1.35*size,1.55*size)}
+  else {for(let i=0;i<6;i++){const f=i/6,y=height*(.42+f*.57),m=leaves(g,canopy[i%3],i,Math.sin(i*2)*.12,y,Math.cos(i*2)*.13,(1.95-f*1.5)*size,1.12-f*.55,(1.8-f*1.38)*size);m.rotation.y=r(i+12)*TAU}}
   return height;
  }
- function groundMaterial(){const m=material(0xffffff,'earth',{vertexColors:true,bumpScale:.32,flatShading:false});m.map=maps.earth.clone();m.map.repeat.set(245,245);m.map.needsUpdate=true;m.bumpMap=m.map;return m}
+ function groundMaterial(){const m=material(0xffffff,'earth',{vertexColors:true,bumpScale:.18,flatShading:false});m.map=maps.earth.clone();m.map.repeat.set(245,245);m.map.needsUpdate=true;m.bumpMap=m.map;return m}
  // Local terrain detail is instanced and re-centered in small chunks, not thousands of draw calls.
  function meadow(scene,height,dry,biomeIndex,BIOMES){
-  const n=coarse?1800:6800,flowerN=coarse?220:850,positions=[],flowerPositions=[];
+  const n=coarse?2600:7800,flowerN=coarse?220:850;
   const blade=new T.BufferGeometry(),bladePos=[];for(let j=0;j<4;j++){const a=j*2.4,cs=Math.cos(a),sn=Math.sin(a),off=(j-1.5)*.035;for(const [x,y,z] of [[-.035,0,0],[.035,0,0],[.012,.28,.055],[-.035,0,0],[.012,.28,.055],[-.012,.46,.12]])bladePos.push(x*cs-z*sn+off,y*(.8+j*.11),x*sn+z*cs)}blade.setAttribute('position',new T.Float32BufferAttribute(bladePos,3));blade.computeVertexNormals();
   const grassMat=new T.MeshStandardMaterial({color:0xffffff,side:T.DoubleSide,roughness:1});const time={value:0};
   grassMat.onBeforeCompile=shader=>{shader.uniforms.ashTime=time;shader.vertexShader='uniform float ashTime;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\ntransformed.x += sin(ashTime*1.7+instanceMatrix[3].x*.25+instanceMatrix[3].z*.13)*position.y*position.y*.33;\n#endif')};
   const grass=new T.InstancedMesh(blade,grassMat,n),petals=new T.InstancedMesh(new T.IcosahedronGeometry(1,0),new T.MeshStandardMaterial({color:0xffffff,roughness:.86}),flowerN);grass.frustumCulled=petals.frustumCulled=false;grass.receiveShadow=true;scene.add(grass,petals);const dummy=new T.Object3D();let cx=Infinity,cz=Infinity;
-  function update(x,z,t){time.value=t;const qx=Math.floor(x/12)*12,qz=Math.floor(z/12)*12;if(qx===cx&&qz===cz)return;cx=qx;cz=qz;let i=0,j=0;let st=((qx*739391+qz*19349663)^813)>>>0;const r=()=>{st=(Math.imul(st,1664525)+1013904223)>>>0;return st/4294967296};
-   for(let k=0;k<n*2&&i<n;k++){const a=r()*TAU,d=Math.sqrt(r())*34,xx=qx+Math.sin(a)*d,zz=qz+Math.cos(a)*d;if(!dry(xx,zz))continue;const bi=biomeIndex(xx,zz);if(bi===2&&r()<.88||bi===3&&r()<.77)continue;const yy=height(xx,zz),sz=.45+r()*.95;dummy.position.set(xx,yy-.04,zz);dummy.rotation.set(0,r()*TAU,0);dummy.scale.set(sz,sz*(.7+r()*.6),sz);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);grass.setColorAt(i,new T.Color(BIOMES[bi].tree[i%3]).lerp(new T.Color(0xb1b36a),r()*.38));i++;if(j<flowerN&&(bi===0||bi===1||bi===4)&&r()<.09){dummy.position.y=yy+.32;dummy.scale.set(.067,.10,.067);dummy.updateMatrix();petals.setMatrixAt(j,dummy.matrix);petals.setColorAt(j,new T.Color([0xdcc58a,0xc2a4d0,0xf2e7be,0xcda15e][j%4]));j++}}
+  function update(x,z,t){time.value=t;const qx=Math.floor(x/12),qz=Math.floor(z/12);if(qx===cx&&qz===cz)return;cx=qx;cz=qz;let i=0,j=0;
+   // Deterministic 12-unit patches: grass never reshuffles when the player crosses a chunk.
+   const tiles=[];for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++)if(dx*dx+dz*dz<=12)tiles.push([dx,dz]);
+   tiles.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);const samples=coarse?105:300;
+   for(const [dx,dz] of tiles){const gx=qx+dx,gz=qz+dz;let st=((gx*739391+gz*19349663)^813)>>>0;const r=()=>{st=(Math.imul(st,1664525)+1013904223)>>>0;return st/4294967296};
+    for(let k=0;k<samples&&i<n;k++){const xx=(gx+r())*12,zz=(gz+r())*12,bi=biomeIndex(xx,zz),chance=r(),sz=.45+r()*.95,rot=r()*TAU,sy=.7+r()*.6,tint=r(),flower=r();if(!dry(xx,zz)||bi===2&&chance<.88||bi===3&&chance<.77)continue;const yy=height(xx,zz);dummy.position.set(xx,yy-.04,zz);dummy.rotation.set(0,rot,0);dummy.scale.set(sz,sz*sy,sz);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);grass.setColorAt(i,new T.Color(BIOMES[bi].tree[k%3]).lerp(new T.Color(0xb1b36a),tint*.38));i++;if(j<flowerN&&(bi===0||bi===1||bi===4)&&flower<.085){dummy.position.y=yy+.26;dummy.scale.set(.067,.095,.067);dummy.updateMatrix();petals.setMatrixAt(j,dummy.matrix);petals.setColorAt(j,new T.Color([0xdcc58a,0xc2a4d0,0xf2e7be,0xcda15e][k%4]));j++}}
+   }
    grass.count=i;petals.count=j;grass.instanceMatrix.needsUpdate=petals.instanceMatrix.needsUpdate=true;if(grass.instanceColor)grass.instanceColor.needsUpdate=true;if(petals.instanceColor)petals.instanceColor.needsUpdate=true;
   }return{update}
  }
