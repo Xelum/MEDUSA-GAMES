@@ -37,7 +37,7 @@ window.MEDUSA_GAMES = [
     "id": "ashborn",
     "title": "Ashborn",
     "subtitle": "Dalle ceneri nasce il tuo viaggio.",
-    "description": "Survival 3D: mondo ampliato con biomi organici, fauna locale, creature notturne, banco da lavoro e costruzione modulare.",
+    "description": "Survival 3D: personaggio rimodellato, vegetazione dettagliata, illuminazione atmosferica, esplorazione e costruzione.",
     "genres": [
       "Survival",
       "Azione"
@@ -47,7 +47,7 @@ window.MEDUSA_GAMES = [
     "cover": "./giochi/ashborn/cover.svg",
     "playable": true,
     "featured": true,
-    "version": "0.4",
+    "version": "0.5",
     "url": "./giochi/ashborn/index.html"
   },
   {
