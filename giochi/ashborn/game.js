@@ -1,6 +1,6 @@
 import {ITEMS,RECIPES,DEFAULT_CHARACTER,LIMIT,WEAPONS,HP,biomeWeights,biomeIndex,LOCAL_RESOURCES,LOCAL_FAUNA,NIGHT_MOBS,jumpStep,isFloor,isEdge,isCover,TERRAIN_STEP,terrainDelta,editTerrain,PIECES,benchNear,planPiece,placePiece,removePiece,hitDamage,movement,assignSlot,selectSlot,fresh,clamp,add,has,take,craft,equip,eat,drink,tick,load} from './rules.js?v=7';
 import {createVisuals} from './visuals.js?v=6';
-import {createCharacter} from './character.js?v=7';
+import {createCharacter} from './character.js?v=8';
 const $=id=>document.getElementById(id),all=s=>[...document.querySelectorAll(s)],KEY='ashborn-save-v1',TAU=Math.PI*2;
 async function boot(){
 let T;
