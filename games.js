@@ -1,51 +1,75 @@
 window.MEDUSA_GAMES = [
   {
-    id: 'forgefall',
-    title: 'Forgefall',
-    subtitle: '5 mosse prima dell’orda',
-    tag: 'GIOCABILE ORA',
-    description: 'Match-3 + tower defense. Costruisci in cinque mosse, poi difendi il Bastione sulla stessa griglia.',
-    art: 'featured',
-    featured: true,
-    playable: true,
-    url: './giochi/forgefall/index.html'
+    "id": "centipede-arena",
+    "title": "Centipede Arena",
+    "subtitle": "Divora. Cresci. Sopravvivi.",
+    "description": "Esplora quattro biomi, sfida 40 rivali, colleziona skin ed evolvi il tuo millepiedi.",
+    "genres": [
+      "Arcade",
+      "Survival",
+      "Azione"
+    ],
+    "color": "#a1ff56",
+    "art": "centipede",
+    "cover": "./giochi/centipede-arena/cover.svg",
+    "playable": true,
+    "featured": true,
+    "version": "4.3",
+    "url": "./giochi/centipede-arena/index.html"
   },
   {
-    id: 'centipede-arena',
-    title: 'Centipede Arena',
-    subtitle: 'Divora. Cresci. Sopravvivi.',
-    tag: 'GIOCABILE ORA · NUOVO',
-    description: 'Arena survival: guida il tuo millepiedi, raccogli cellule luminose e intrappola 22 avversari. PC e mobile.',
-    art: 'green',
-    cover: './giochi/centipede-arena/cover.svg',
-    playable: true,
-    url: './giochi/centipede-arena/index.html'
+    "id": "forgefall",
+    "title": "Forgefall",
+    "subtitle": "Cinque mosse prima dell'orda.",
+    "description": "Combina materiali, costruisci difese e proteggi il bastione in un mix di puzzle e tower defense.",
+    "genres": [
+      "Strategia",
+      "Puzzle"
+    ],
+    "color": "#ffac57",
+    "art": "forge",
+    "cover": "./giochi/forgefall/assets/arena_bg_clean.png",
+    "playable": true,
+    "featured": true,
+    "url": "./giochi/forgefall/index.html"
   },
   {
-    id: 'naval-chaos',
-    title: 'Naval Chaos',
-    subtitle: 'Battaglia navale remix',
-    tag: 'PROSSIMAMENTE',
-    description: 'Partite rapide, poteri casuali e una griglia che cambia a ogni round.',
-    art: 'cyan',
-    playable: false
+    "id": "naval-chaos",
+    "title": "Naval Chaos",
+    "subtitle": "Battaglia navale remix.",
+    "description": "Battaglie tattiche, poteri casuali e una griglia che cambia a ogni round.",
+    "genres": [
+      "Strategia",
+      "Azione"
+    ],
+    "color": "#64dfff",
+    "art": "naval",
+    "playable": false
   },
   {
-    id: 'stack-panic',
-    title: 'Stack Panic',
-    subtitle: 'Uno stack alla volta',
-    tag: 'PROSSIMAMENTE',
-    description: 'Impila blocchi, fai combo e non far crollare la torre.',
-    art: 'purple',
-    playable: false
+    "id": "stack-panic",
+    "title": "Stack Panic",
+    "subtitle": "Uno stack alla volta.",
+    "description": "Impila blocchi, crea combo e sfida la gravità senza far crollare la torre.",
+    "genres": [
+      "Puzzle",
+      "Arcade"
+    ],
+    "color": "#c993ff",
+    "art": "stack",
+    "playable": false
   },
   {
-    id: 'ghost-dash',
-    title: 'Ghost Dash',
-    subtitle: 'Corri o sparisci',
-    tag: 'PROSSIMAMENTE',
-    description: 'Un endless runner cartoon da una partita e poi un’altra.',
-    art: 'pink',
-    playable: false
+    "id": "ghost-dash",
+    "title": "Ghost Dash",
+    "subtitle": "Corri o sparisci.",
+    "description": "Un endless runner di riflessi e velocità. Quanto lontano riuscirai ad arrivare?",
+    "genres": [
+      "Arcade",
+      "Azione"
+    ],
+    "color": "#ff81ce",
+    "art": "ghost",
+    "playable": false
   }
 ];
