@@ -1,6 +1,7 @@
 // Pure survival rules — independent of rendering.
-export const ITEMS={wood:'Legna',stone:'Pietra',fiber:'Fibra',berries:'Bacche',hide:'Pelle',meat:'Carne cruda',food:'Carne cotta',axe:'Ascia di pietra',pickaxe:'Piccone di pietra',sword:'Spada di pietra',spear:'Lancia',tunic:'Tunica',boots:'Calzari',campfire:'Falò',hammer:'Martello',plank:'Tavole di legno',flint:'Selce',resin:'Resina',mushroom:'Funghi',clay:'Argilla',copper:'Minerale di rame',torch:'Torcia',flintaxe:'Ascia di selce',oak:'Legno di quercia',cactus:'Frutto del deserto',icecrystal:'Cristallo di gelo',reed:'Giunco palustre',amber:'Ambra',bone:'Ossa',fang:'Zanna',fur:'Pelliccia',venom:'Essenza palustre',linen:'Tela grezza',wintercoat:'Mantello di pelliccia'};
+export const ITEMS={bench:'Banco da lavoro',wood:'Legna',stone:'Pietra',fiber:'Fibra',berries:'Bacche',hide:'Pelle',meat:'Carne cruda',food:'Carne cotta',axe:'Ascia di pietra',pickaxe:'Piccone di pietra',sword:'Spada di pietra',spear:'Lancia',tunic:'Tunica',boots:'Calzari',campfire:'Falò',hammer:'Martello',plank:'Tavole di legno',flint:'Selce',resin:'Resina',mushroom:'Funghi',clay:'Argilla',copper:'Minerale di rame',torch:'Torcia',flintaxe:'Ascia di selce',oak:'Legno di quercia',cactus:'Frutto del deserto',icecrystal:'Cristallo di gelo',reed:'Giunco palustre',amber:'Ambra',bone:'Ossa',fang:'Zanna',fur:'Pelliccia',venom:'Essenza palustre',linen:'Tela grezza',wintercoat:'Mantello di pelliccia'};
 export const RECIPES=[
+{id:'bench',name:'Banco da lavoro',cost:{wood:4},desc:'Crea il banco e posizionalo sul terreno. Premi E accanto ad esso per aprire le ricette avanzate.'},
 {id:'axe',name:'Ascia di pietra',cost:{wood:2,stone:3,fiber:1},desc:'5 danni al legno per colpo.'},
 {id:'pickaxe',name:'Piccone di pietra',cost:{wood:2,stone:4,fiber:2},desc:'6 danni alle rocce per colpo.'},
 {id:'sword',name:'Spada di pietra',cost:{wood:2,stone:5,fiber:2},desc:'30 danni agli animali per colpo.'},
@@ -14,11 +15,11 @@ export const RECIPES=[
 {id:'flintaxe',name:'Ascia di selce',cost:{wood:3,flint:4,fiber:2},bench:true,desc:'8 danni al legno per colpo.'},
 {id:'food',name:'Cuoci la carne',cost:{meat:1},fire:true,desc:'Richiede un falò vicino.'}];
 export const LIMIT=480;
-for(const r of RECIPES)if(!['hammer','campfire','axe','food'].includes(r.id))r.bench=true;
+for(const r of RECIPES)if(!['bench','hammer','campfire','axe','food'].includes(r.id))r.bench=true;
 RECIPES.push({id:'linen',name:'Tela grezza',cost:{fiber:3,reed:2},qty:2,bench:true,desc:'Tessuto ricavato da fibre e giunchi.'},{id:'wintercoat',name:'Mantello di pelliccia',cost:{fur:3,linen:2},bench:true,desc:'Protezione dal freddo, anche sulle montagne.'});
 export const LIMIT_OLD=230;
 export const WEAPONS=['axe','pickaxe','sword','spear','hammer','torch','flintaxe'];
-export const QUICK_ITEMS=[...WEAPONS,'tunic','boots','wintercoat','wintercoat','berries','food','mushroom','cactus'];
+export const QUICK_ITEMS=[...WEAPONS,'bench','tunic','boots','wintercoat','berries','food','mushroom','cactus'];
 export const HP={wood:15,stone:12,fiber:3,berries:3,chest:10,wolf:55,boar:70,deer:40,flint:5,clay:8,copper:18,mushroom:2,oak:25,cactus:4,icecrystal:22,reed:4,amber:12,rabbit:18,fox:32,scorpion:45,icewolf:80,crocodile:95,shade:45,forestwraith:65,sandstalker:70,frostwraith:90,swampwraith:80};
 export const DAMAGE={hand:{wood:1,stone:1,fiber:1,berries:1,chest:1,animal:5},axe:{wood:5,stone:1,fiber:2,berries:2,chest:5,animal:14},pickaxe:{wood:1,stone:6,fiber:1,berries:1,chest:2,animal:10},sword:{wood:1,stone:1,fiber:3,berries:3,chest:2,animal:30},spear:{wood:1,stone:1,fiber:1,berries:1,chest:1,animal:24}};
 export const hitDamage=(weapon,kind)=>{const k=['wolf','boar','deer','rabbit','fox','scorpion','icewolf','crocodile','shade','forestwraith','sandstalker','frostwraith','swampwraith'].includes(kind)?'animal':['flint','clay','copper','icecrystal','amber'].includes(kind)?'stone':kind==='oak'?'wood':kind==='reed'?'fiber':['mushroom','cactus'].includes(kind)?'berries':kind;return (weapon==='flintaxe'?{...DAMAGE.axe,wood:8,animal:20}:weapon==='hammer'?{...DAMAGE.hand,wood:2,stone:2}:DAMAGE[weapon]||DAMAGE.hand)[k]||1};
@@ -69,10 +70,10 @@ export function planPiece(s,kind,x,z,rot,ground,dry=true){
  else if(['roof','slopedroof','beam'].includes(kind)&&!floor)reason='Serve un pavimento sotto il tetto';
  else if(['roof','slopedroof','beam'].includes(kind)&&!s.buildings.some(q=>(['wall','door','window'].includes(q.kind)&&Math.abs(q.x-cx)+Math.abs(q.z-cz)===1)||(q.kind==='post'&&q.x===cx&&q.z===cz)))reason='Serve una parete o una porta di sostegno';
  else if(s.buildings.some(q=>q.x===cx&&q.z===cz&&(q.kind===kind||edge&&['wall','door','fence','window'].includes(q.kind))))reason='Spazio occupato';
- else if(!has(s,p.cost))reason='Materiali insufficienti';
+ else if(!(kind==='bench'&&s.inventory.bench>0)&&!has(s,p.cost))reason='Materiali insufficienti';
  return {ok:!reason,reason,piece:b};
 }
-export function placePiece(s,plan){if(!plan?.ok||!PIECES[plan.piece.kind]||!has(s,PIECES[plan.piece.kind].cost))return null;const b={...plan.piece,id:s.nextBuildId++,open:false};for(const [k,n] of Object.entries(PIECES[b.kind].cost))take(s,k,n);s.buildings.push(b);return b}
+export function placePiece(s,plan){if(!plan?.ok||!PIECES[plan.piece.kind])return null;const packed=plan.piece.kind==='bench'&&s.inventory.bench>0;if(!packed&&!has(s,PIECES[plan.piece.kind].cost))return null;const b={...plan.piece,id:s.nextBuildId++,open:false};if(packed)take(s,'bench');else for(const [k,n] of Object.entries(PIECES[b.kind].cost))take(s,k,n);s.buildings.push(b);return b}
 export function removePiece(s,id){const i=s.buildings.findIndex(b=>b.id===id);if(i<0)return false;const b=s.buildings[i];s.buildings.splice(i,1);for(const [k,n] of Object.entries(PIECES[b.kind].cost))add(s,k,n);return true}
 
 export function jumpStep(y,v,dt){const speed=v-14*dt,next=y+speed*dt;return next<=0?{y:0,v:0}:{y:next,v:speed}}
