@@ -55,3 +55,17 @@ export function createDetails(T,scene,visuals,height,dry,biomeIndex,blocked,coar
  for(const k of types){const m=meshes[k];m.count=n[k];m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true}}
  return {update,invalidate(){cx=cz=Infinity}};
 }
+
+export function createAtmosphere(T,scene,height,biomeIndex,coarse){
+ const size=64,data=new Uint8Array(size*size*4);
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){const r=Math.hypot((x+.5-size/2)/(size/2),(y+.5-size/2)/(size/2)),i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=255;data[i+3]=Math.round(255*Math.pow(Math.max(0,1-r*r),3))}
+ const tex=new T.DataTexture(data,size,size,T.RGBAFormat);tex.needsUpdate=true;
+ function layer(n,params){const pos=new Float32Array(n*3),g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(pos,3));const m=new T.PointsMaterial({map:tex,transparent:true,depthWrite:false,sizeAttenuation:true,...params}),points=new T.Points(g,m);points.frustumCulled=false;scene.add(points);return{pos,g,m,points,n}}
+ const mist=layer(coarse?22:52,{size:7,opacity:.11,color:0xb4c0b3}),flies=layer(coarse?45:105,{size:.24,opacity:.9,color:0xdce9a0,blending:T.AdditiveBlending});
+ function update(x,z,t,day,indoors){const b=biomeIndex(x,z),m=[.025,.10,.06,.12,.17][b],night=1-day;mist.points.visible=!indoors;flies.points.visible=!indoors&&(b===0||b===1||b===4)&&day<.74;
+  mist.m.opacity=m*(.65+.35*night);mist.m.color.set([0xd2dbcd,0xa9c0ae,0xdac5a0,0xd8e9ef,0x91b09a][b]);mist.m.size=b===4?9:b===3?8:6;
+  for(let i=0;i<mist.n;i++){const a=i*2.39996+t*.028,r=5+(i*7.19)%29,xx=x+Math.sin(a)*r,zz=z+Math.cos(a)*r;mist.pos[i*3]=xx;mist.pos[i*3+1]=height(xx,zz)+.6+(i%4)*.21;mist.pos[i*3+2]=zz}
+  mist.g.attributes.position.needsUpdate=true;flies.m.opacity=.8*night;flies.m.size=.18+.035*Math.sin(t*2.1);
+  if(flies.points.visible){for(let i=0;i<flies.n;i++){const a=i*2.39996+t*.10,r=3+(i*4.72)%22,xx=x+Math.sin(a)*r+.25*Math.sin(t*1.3+i),zz=z+Math.cos(a)*r;flies.pos[i*3]=xx;flies.pos[i*3+1]=height(xx,zz)+.4+(i%9)*.21+.22*Math.sin(t*1.4+i*1.7);flies.pos[i*3+2]=zz}flies.g.attributes.position.needsUpdate=true}
+ }return {update}
+}
