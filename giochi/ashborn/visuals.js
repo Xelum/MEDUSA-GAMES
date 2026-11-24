@@ -69,6 +69,13 @@ export function createVisuals(T,renderer,coarse){
   return {body,arms,legs,skinMat,dispose(){for(const g of own)g.dispose();skinMat.dispose();hairMat.dispose()}};
  }
  // Bark and wood with visible grain; branching tree silhouettes and layered foliage.
+ // Individual irregular leaves, alpha-cutout on crossed 3D foliage cards.
+ const leafCanvas=document.createElement('canvas');leafCanvas.width=leafCanvas.height=256;const lc=leafCanvas.getContext('2d');
+ for(let i=0;i<160;i++){const a=rnd()*TAU,d=Math.sqrt(rnd())*111,x=128+Math.cos(a)*d,y=128+Math.sin(a)*d,w=6+rnd()*9,l=13+rnd()*17;lc.save();lc.translate(x,y);lc.rotate(rnd()*TAU);const light=145+Math.floor(rnd()*90);lc.fillStyle='rgb('+light+','+Math.min(255,light+14)+','+Math.max(0,light-20)+')';lc.beginPath();lc.moveTo(0,-l/2);lc.quadraticCurveTo(w,-l*.12,0,l/2);lc.quadraticCurveTo(-w,l*.1,0,-l/2);lc.fill();lc.strokeStyle='rgba(70,85,47,.5)';lc.lineWidth=.65;lc.beginPath();lc.moveTo(0,-l/2);lc.lineTo(0,l/2);lc.stroke();lc.restore()}
+ const leafTex=new T.CanvasTexture(leafCanvas);leafTex.colorSpace=T.SRGBColorSpace;const leafMats=new Map(),leafShapes=[];
+ function leafMat(c){if(!leafMats.has(c))leafMats.set(c,new T.MeshStandardMaterial({color:c,map:leafTex,alphaTest:.48,side:T.DoubleSide,roughness:.89}));return leafMats.get(c)}
+ for(let k=0;k<5;k++){const pos=[],uv=[],ind=[];for(let i=0;i<22;i++){const a=i*2.399963+k,b=(i%7-3)/3,rad=.28+((i*17)%13)/20,x=Math.cos(a)*rad,z=Math.sin(a)*rad,y=b*.58,w=.48+((i*7)%5)*.11,hh=.46+(i%4)*.13;const u=new T.Vector3(Math.cos(a),.16*Math.sin(a),Math.sin(a)).normalize(),v=new T.Vector3(-.30*Math.sin(a),.87,.3*Math.cos(a)).normalize();const start=pos.length/3;for(const [s,t] of [[-1,-1],[1,-1],[1,1],[-1,1]])pos.push(x+s*u.x*w+t*v.x*hh,y+s*u.y*w+t*v.y*hh,z+s*u.z*w+t*v.z*hh);uv.push(0,0,1,0,1,1,0,1);ind.push(start,start+1,start+2,start,start+2,start+3)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(ind);g.computeVertexNormals();leafShapes.push(g)}
+ function leaves(p,c,idx,x,y,z,sx,sy,sz){const m=object(p,leafShapes[idx%leafShapes.length],leafMat(c),x,y,z);m.scale.set(sx,sy,sz);return m}
  const trunkGeo=new T.CylinderGeometry(.64,1,1,9,4),leafGeo=new T.IcosahedronGeometry(1,2),pineGeo=new T.ConeGeometry(1,1,11,2);
  function tree(g,bi,bio,kind,seedId){
   const r=n=>{const v=Math.sin(seedId*17.91+n*78.233)*43758.5453;return v-Math.floor(v)},bark=mat(bi===2?0x94734e:0x6d5943,'bark'),size=kind==='oak'?1.25:1;
@@ -77,15 +84,15 @@ export function createVisuals(T,renderer,coarse){
   limb([0,-.16,0],[.10,height*.63,-.08],.32*size);limb([.1,height*.55,-.08],[.19,height,0],.17*size);
   const foliage=bi===0||kind==='oak'||bi===4;
   if(bi===2){for(let i=0;i<8;i++){const a=i*TAU/8;const x=Math.cos(a)*1.45,z=Math.sin(a)*1.45;limb([.19,height,0],[x,height-.45,z],.055);const m=object(g,leafGeo,mat(bio.tree[i%3],'earth'),x*.78,height-.25,z*.78);m.scale.set(.25,.12,1.15);m.rotation.y=-a+Math.PI/2}}
-  else if(foliage){for(let i=0;i<7;i++){const a=i*TAU/7+r(i+5)*.7,x=Math.sin(a)*(1+r(i+20))*.85*size,z=Math.cos(a)*(1+r(i+21))*.85*size,y=height*(.66+r(i+30)*.30);limb([0,height*.42,0],[x,y,z],.10*size);const m=object(g,leafGeo,mat(bio.tree[i%3],'earth'),x,y,z);m.scale.set(1.05*size,.82*size,1.15*size);m.rotation.y=a}const m=object(g,leafGeo,mat(bio.tree[2],'earth'),.12,height,.1);m.scale.set(1.23*size,1.05*size,1.18*size)}
-  else {for(let i=0;i<6;i++){const f=i/6,y=height*(.42+f*.57),m=object(g,pineGeo,mat(bio.tree[i%3],'earth'),Math.sin(i*2)*.12,y,Math.cos(i*2)*.13);m.scale.set((1.9-f*1.45)*size,2.0-f*.85,(1.75-f*1.35)*size);m.rotation.y=r(i+12)*TAU}}
+  else if(foliage){for(let i=0;i<7;i++){const a=i*TAU/7+r(i+5)*.7,x=Math.sin(a)*(1+r(i+20))*.85*size,z=Math.cos(a)*(1+r(i+21))*.85*size,y=height*(.66+r(i+30)*.30);limb([0,height*.42,0],[x,y,z],.10*size);const m=leaves(g,bio.tree[i%3],i,x,y,z,1.45*size,1.1*size,1.45*size);m.rotation.y=a}leaves(g,bio.tree[2],3,.12,height,.1,1.55*size,1.35*size,1.55*size)}
+  else {for(let i=0;i<6;i++){const f=i/6,y=height*(.42+f*.57),m=leaves(g,bio.tree[i%3],i,Math.sin(i*2)*.12,y,Math.cos(i*2)*.13,(1.95-f*1.5)*size,1.12-f*.55,(1.8-f*1.38)*size);m.rotation.y=r(i+12)*TAU}}
   return height;
  }
  function groundMaterial(){const m=material(0xffffff,'earth',{vertexColors:true,bumpScale:.32,flatShading:false});m.map=maps.earth.clone();m.map.repeat.set(245,245);m.map.needsUpdate=true;m.bumpMap=m.map;return m}
  // Local terrain detail is instanced and re-centered in small chunks, not thousands of draw calls.
  function meadow(scene,height,dry,biomeIndex,BIOMES){
-  const n=coarse?2200:9000,flowerN=coarse?220:850,positions=[],flowerPositions=[];
-  const blade=new T.BufferGeometry();blade.setAttribute('position',new T.Float32BufferAttribute([-.04,0,0,.04,0,0,.015,.28,.065,-.04,0,0,.015,.28,.065,-.017,.48,.14],3));blade.computeVertexNormals();
+  const n=coarse?1800:6800,flowerN=coarse?220:850,positions=[],flowerPositions=[];
+  const blade=new T.BufferGeometry(),bladePos=[];for(let j=0;j<4;j++){const a=j*2.4,cs=Math.cos(a),sn=Math.sin(a),off=(j-1.5)*.035;for(const [x,y,z] of [[-.035,0,0],[.035,0,0],[.012,.28,.055],[-.035,0,0],[.012,.28,.055],[-.012,.46,.12]])bladePos.push(x*cs-z*sn+off,y*(.8+j*.11),x*sn+z*cs)}blade.setAttribute('position',new T.Float32BufferAttribute(bladePos,3));blade.computeVertexNormals();
   const grassMat=new T.MeshStandardMaterial({color:0xffffff,side:T.DoubleSide,roughness:1});const time={value:0};
   grassMat.onBeforeCompile=shader=>{shader.uniforms.ashTime=time;shader.vertexShader='uniform float ashTime;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\ntransformed.x += sin(ashTime*1.7+instanceMatrix[3].x*.25+instanceMatrix[3].z*.13)*position.y*position.y*.33;\n#endif')};
   const grass=new T.InstancedMesh(blade,grassMat,n),petals=new T.InstancedMesh(new T.IcosahedronGeometry(1,0),new T.MeshStandardMaterial({color:0xffffff,roughness:.86}),flowerN);grass.frustumCulled=petals.frustumCulled=false;grass.receiveShadow=true;scene.add(grass,petals);const dummy=new T.Object3D();let cx=Infinity,cz=Infinity;
