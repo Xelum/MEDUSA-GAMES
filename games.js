@@ -34,6 +34,23 @@ window.MEDUSA_GAMES = [
     "url": "./giochi/forgefall/index.html"
   },
   {
+    "id": "ashborn",
+    "title": "Ashborn",
+    "subtitle": "Dalle ceneri nasce il tuo viaggio.",
+    "description": "Survival 3D in terza persona. Crea il tuo barbaro, esplora la valle antica, raccogli risorse e costruisci il tuo equipaggiamento.",
+    "genres": [
+      "Survival",
+      "Azione"
+    ],
+    "color": "#e8be7a",
+    "art": "ashborn",
+    "cover": "./giochi/ashborn/cover.svg",
+    "playable": true,
+    "featured": true,
+    "version": "0.1",
+    "url": "./giochi/ashborn/index.html"
+  },
+  {
     "id": "naval-chaos",
     "title": "Naval Chaos",
     "subtitle": "Battaglia navale remix.",
