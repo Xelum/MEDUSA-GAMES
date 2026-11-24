@@ -37,7 +37,7 @@ window.MEDUSA_GAMES = [
     "id": "ashborn",
     "title": "Ashborn",
     "subtitle": "Dalle ceneri nasce il tuo viaggio.",
-    "description": "Survival 3D: costruisci rifugi, modifica il terreno, pianta alberi ed esplora antichi santuari in un mondo con vegetazione e illuminazione migliorate.",
+    "description": "Survival 3D: barbaro anatomico personalizzabile, animazioni scheletriche, costruzione, terreno modificabile e antichi santuari.",
     "genres": [
       "Survival",
       "Azione"
@@ -47,7 +47,7 @@ window.MEDUSA_GAMES = [
     "cover": "./giochi/ashborn/cover.svg",
     "playable": true,
     "featured": true,
-    "version": "0.6",
+    "version": "0.7",
     "url": "./giochi/ashborn/index.html"
   },
   {
