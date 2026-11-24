@@ -20,8 +20,9 @@
       art.style.backgroundImage = `url("${game.cover}")`;
       art.style.backgroundPosition = 'center';
       art.style.backgroundSize = 'cover';
-      artGrid.hidden = true;
+      artGrid.style.display = 'none';
       art.classList.add('custom-cover');
+      card.classList.add('has-cover');
     }
 
     const copy = document.createElement('div');
