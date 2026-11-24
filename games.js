@@ -11,21 +11,23 @@ window.MEDUSA_GAMES = [
     url: './giochi/forgefall/index.html'
   },
   {
+    id: 'centipede-arena',
+    title: 'Centipede Arena',
+    subtitle: 'Divora. Cresci. Sopravvivi.',
+    tag: 'GIOCABILE ORA · NUOVO',
+    description: 'Arena survival: guida il tuo millepiedi, raccogli cellule luminose e intrappola 22 avversari. PC e mobile.',
+    art: 'green',
+    cover: './giochi/centipede-arena/cover.svg',
+    playable: true,
+    url: './giochi/centipede-arena/index.html'
+  },
+  {
     id: 'naval-chaos',
     title: 'Naval Chaos',
     subtitle: 'Battaglia navale remix',
     tag: 'PROSSIMAMENTE',
     description: 'Partite rapide, poteri casuali e una griglia che cambia a ogni round.',
     art: 'cyan',
-    playable: false
-  },
-  {
-    id: 'snake-rumble',
-    title: 'Snake Rumble',
-    subtitle: 'Snake, ma cattivo',
-    tag: 'PROSSIMAMENTE',
-    description: 'Cresci, taglia la strada agli altri e sopravvivi nell’arena.',
-    art: 'green',
     playable: false
   },
   {
