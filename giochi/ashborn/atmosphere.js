@@ -17,15 +17,22 @@ export function terrainArt(T,mat,coarse){
  vec2 ashP=vAshGround.xz;
  vec4 ashMacro=texture2D(ashSurface,ashP*.038);
  vec4 ashMicro=texture2D(ashSurface,ashP*.57);
+ vec4 ashFine=texture2D(ashSurface,ashP*1.75);
+ float ashForest=clamp(vAshRegions.y,0.,1.);
  float ashDesert=clamp(vAshRegions.z,0.,1.);
  float ashSnow=clamp(vAshRegions.w,0.,1.);
  float ashMoss=clamp(vAshRegions.y+vAshMarsh,0.,1.);
  float ashRock=smoothstep(.12,.43,1.-vAshSlope+ashMacro.r*.16);
  float ashSoil=smoothstep(.52,.73,ashMacro.r+ashMicro.r*.13)*(1.-ashDesert)*(1.-ashSnow)*(1.-ashRock);
  float ashPath=smoothstep(.68,.83,ashMacro.a)*smoothstep(.42,.62,ashMacro.r)*.36;
- vec3 ashGrass=diffuseColor.rgb*mix(.75,1.23,ashMacro.r)*mix(.82,1.17,ashMicro.g);
- vec3 ashEarth=mix(vec3(.17,.115,.063),vec3(.075,.095,.055),ashMoss)*mix(.68,1.28,ashMicro.r);
- vec3 ashStone=mix(vec3(.17,.18,.155),vec3(.34,.37,.37),ashMicro.b)*mix(.76,1.15,ashMacro.g);
+ vec3 ashGrass=diffuseColor.rgb*mix(.62,1.28,ashMacro.r)*mix(.77,1.19,ashMicro.g);
+ ashGrass*=mix(vec3(1.0),vec3(.70,1.06,.81),ashForest*.73);
+ ashGrass*=mix(.82,1.18,ashFine.g);
+ float mossPatch=smoothstep(.43,.78,ashMacro.b+ashMicro.r*.19)*ashForest;
+ ashGrass=mix(ashGrass,vec3(.09,.17,.065)*mix(.66,1.25,ashMicro.g),mossPatch*.50);
+ vec3 ashEarth=mix(vec3(.16,.105,.057),vec3(.058,.087,.042),ashMoss)*mix(.61,1.36,ashMicro.r)*mix(.88,1.15,ashFine.g);
+ vec3 ashStone=mix(vec3(.14,.16,.135),vec3(.34,.37,.37),ashMicro.b)*mix(.71,1.18,ashMacro.g);
+ ashStone=mix(ashStone,vec3(.075,.14,.06),ashForest*smoothstep(.54,.82,ashFine.r)*.36);
  vec3 ashSand=mix(vec3(.28,.19,.105),vec3(.60,.45,.25),ashMacro.r)*(.88+.20*ashMicro.g+.055*sin(dot(ashP,vec2(7.3,4.4))+ashMacro.g*10.));
  vec3 ashIce=mix(vec3(.36,.45,.48),vec3(.79,.85,.86),ashMicro.g);
  vec3 ashMud=mix(vec3(.068,.080,.052),vec3(.18,.19,.11),ashMacro.r);
@@ -36,7 +43,7 @@ export function terrainArt(T,mat,coarse){
  ashColor=mix(ashColor,ashStone,ashRock*(1.-ashDesert*.58));
  diffuseColor.rgb=ashColor*(1.-ashWet*.21*(1.-ashSnow));
  `).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.48,ashWet*.5);');
- };mat.customProgramCacheKey=()=> 'ashborn-terrain-14';return {update(w,d){wet.value=w;sun.value=d},texture:tex}
+ };mat.customProgramCacheKey=()=> 'ashborn-terrain-30';return {update(w,d){wet.value=w;sun.value=d},texture:tex}
 }
 // Real particle sprites with soft edges, stable world-space positions and bounded populations.
 export function createEnvironment(T,scene,height,coarse){
