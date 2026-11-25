@@ -14,6 +14,7 @@ export function oldBase(x,z,w,d){const base=1.9*Math.sin(x*.041)*Math.cos(z*.046
 export function relief(x,z,w,d){const edge=smooth((Math.hypot(x,z)-27)/65)*smooth((d-26)/16),ridge=Math.pow(.5+.5*Math.sin(x*.024+Math.sin(z*.023)*1.7)*Math.cos(z*.027),2),hills=3.8*Math.sin(x*.017+z*.011)*Math.cos(z*.024)+1.3*Math.cos(x*.061-z*.043);
  return edge*(w[0]*(2.4+ridge*5+hills*.45)+w[1]*(3+ridge*7+hills*.7)+w[2]*(2+3.5*Math.sin(x*.048+z*.019+Math.sin(z*.034)*1.4))+w[3]*(9+ridge*24+hills*1.25)+w[4]*(.4+1.2*Math.sin(x*.061)*Math.cos(z*.057)))}
 export function worldHeight(x,z,weights,water,legacy=false){const w=weights(x,z),d=water(x,z),base=oldBase(x,z,w,d);if(legacy)return base;let y=base+relief(x,z,w,d);for(const site of SITES){const dist=Math.hypot(x-site.x,z-site.z);if(dist>site.r+13)continue;const target=oldBase(site.x,site.z,weights(site.x,site.z),water(site.x,site.z))+relief(site.x,site.z,weights(site.x,site.z),water(site.x,site.z));y+=(target-y)*(1-smooth((dist-site.r)/(13)));}return y}
+export function siteScale(s){return s.kind==='crypt'?1.48:s.kind==='cave'?1.5:s.kind==='tower'?1.85:s.kind==='witch'||s.kind==='hut'?1.65:1.45}
 export function protectedSite(x,z,pad=0){return SITES.some(s=>Math.hypot(x-s.x,z-s.z)<s.r+pad)}
 export function buildWorld(T,scene,visuals,height,coarse){
  const sites=[],walls=[],lights=[],roofs=[],obstacles=[],geos={box:new T.BoxGeometry(1,1,1),rock:new T.IcosahedronGeometry(1,2),cyl:new T.CylinderGeometry(.82,1,1,10),cone:new T.ConeGeometry(1,1,12)},materials=new Map();
@@ -30,7 +31,7 @@ export function buildWorld(T,scene,visuals,height,coarse){
   for(const x of [-2.55,2.55])for(const z of [-3,3])B(s.g,0x493628,x,1.6,z,.24,3.2,.24);B(s.g,0x796347,0,.05,0,5.35,.11,6,'bark');B(s.g,0x55412e,-1.75,.75,-1.8,1.5,.16,.76);for(const x of [-2.3,-1.2])B(s.g,0x55412e,x,.38,-1.8,.12,.76,.5);
   if(witch){const pot=R(s.g,0x343d37,-1.6,.58,1.05,.65,.54,.65);const rim=C(s.g,0x565d49,-1.6,.92,1.05,.58,.13,.58,'stone');const brew=C(s.g,0x9ec765,-1.6,1.00,1.05,.50,.06,.50,'earth');brew.material=new T.MeshBasicMaterial({color:0x8da64b});torch(s,-1.6,1.24,1.05,0x9fe48c);for(let i=0;i<5;i++){C(s.g,0x738d53,-2.3+i*.22,1.04,-1.8,.075,.3,.075,'earth')}const npc=new T.Group();npc.position.set(1.55,0,-1.65);s.g.add(npc);mesh(npc,'cone',0x3f4c36,0,.78,0,.63,1.48,.63,'cloth');R(npc,0xa58a6e,0,1.67,0,.16,.21,.16);C(npc,0x39362e,0,1.86,0,.41,.06,.41,'cloth');mesh(npc,'cone',0x39362e,0,2.09,0,.29,.53,.29,'cloth');s.npc={x:s.x+1.55,z:s.z-1.65};torch(s,2,2,2,0x8dce83)}else torch(s,2,2,2);
  }
- for(const def of SITES){const s={...def,g:new T.Group()};s.g.position.set(s.x,height(s.x,s.z),s.z);scene.add(s.g);sites.push(s);obstacles.push(s.g);
+ for(const def of SITES){const s={...def,scale:siteScale(def),g:new T.Group()};s.g.position.set(s.x,height(s.x,s.z),s.z);scene.add(s.g);sites.push(s);obstacles.push(s.g);
   if(s.kind==='cave'){const c=s.biome===3?0x85999e:0x686d60;wall(s,-4.7,0,1.4,15,2,4,c);wall(s,4.7,0,1.4,15,2,4,c);wall(s,0,-7.4,10,1.3,2,4,c);
    for(let i=0;i<9;i++)for(const side of [-1,1]){const r=R(s.g,c,side*(5.2+.25*Math.sin(i*2)),2.3,(i-4)*1.65,1.8,2.9,1.55);r.rotation.y=i*.7}
    for(let i=0;i<6;i++){const r=R(s.g,c,0,5.15,(i-2.5)*2.7,6.5,1.8,2.2);roofs.push({site:s,m:r})}
@@ -39,6 +40,13 @@ export function buildWorld(T,scene,visuals,height,coarse){
   }else if(s.kind==='witch'||s.kind==='hut'){hut(s,s.kind==='witch');s.inside={w:2.5,d:3};if(s.kind==='hut')s.loot={x:s.x+.8,z:s.z-1.8};
   }else if(s.kind==='tower'){for(let i=0;i<3;i++){stoneWall(s,-2.7,0,.7,5.5,3+i*.03);break}stoneWall(s,2.7,0,.7,5.5,3.8);stoneWall(s,0,-2.7,5.7,.7,4.1);for(let i=0;i<5;i++){B(s.g,0x89897d,2.7,4+i*.48,-1.7,.72,.44,2.2,'stone')}for(let i=0;i<5;i++)R(s.g,0x7a7b6c,-3.2+i*1.2,.35,3.4,.48,.35,.4);s.loot={x:s.x,z:s.z-1.4};
   }else{for(const x of [-2.1,2.1]){B(s.g,0x856342,x,.65,0,2.5,.3,3);for(const side of [-1,1]){const wheel=C(s.g,0x53432f,x+side*1.35,.54,0,.63,.14,.63);wheel.rotation.z=Math.PI/2}for(let i=0;i<4;i++)B(s.g,0x9c7650,x,.95,(i-1.5)*.66,2.35,.3,.58)}for(let i=0;i<5;i++)R(s.g,0xafa18a,-2+i,.17,3.2,.22,.14,.3);s.loot={x:s.x,z:s.z-2.4}}
+  // Scale the architecture and its collision/interaction coordinates together.
+  const k=s.scale;s.g.scale.set(k,k,k);
+  for(const v of walls.filter(v=>v.site===s)){v.x=s.x+(v.x-s.x)*k;v.z=s.z+(v.z-s.z)*k;v.w*=k;v.d*=k}
+  if(s.inside){s.inside.w*=k;s.inside.d*=k}
+  if(s.loot){s.loot.x=s.x+(s.loot.x-s.x)*k;s.loot.z=s.z+(s.loot.z-s.z)*k}
+  if(s.npc){s.npc.x=s.x+(s.npc.x-s.x)*k;s.npc.z=s.z+(s.npc.z-s.z)*k}
+  for(const v of lights.filter(v=>v.site===s)){v.l.distance*=k}
  }
  function blocked(x,z){return walls.some(w=>w.site.g.visible&&Math.abs(x-w.x)<w.w/2+.24&&Math.abs(z-w.z)<w.d/2+.24)}
  function inside(x,z){return sites.find(s=>s.g.visible&&s.inside&&Math.abs(x-s.x)<s.inside.w&&Math.abs(z-s.z)<s.inside.d)}
