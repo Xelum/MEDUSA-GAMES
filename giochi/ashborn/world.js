@@ -47,13 +47,26 @@ export function buildWorld(T,scene,visuals,height,coarse){
  return {sites,obstacles,blocked,inside,update,reheight};
 }
 // Streamed instancing: many distinct forms, only a handful of draw calls.
-export function createDetails(T,scene,visuals,height,dry,biomeIndex,blocked,coarse){
- const count=coarse?150:430,geo={rock:new T.IcosahedronGeometry(1,1),leaf:new T.BufferGeometry(),log:new T.CylinderGeometry(.84,1,1,10),shard:new T.ConeGeometry(1,1,6),bush:new T.IcosahedronGeometry(1,1)};
- const leaf=[];for(let j=0;j<8;j++){const a=j*TAU/8,c=Math.cos(a),s=Math.sin(a);for(let k=0;k<4;k++){const t=k/4,u=(k+1)/4;for(const [q,side] of [[t,-1],[t,1],[u,1],[t,-1],[u,1],[u,-1]]){const w=Math.sin(q*Math.PI)*.14,dist=q*.65;leaf.push(c*dist-s*side*w,.12+Math.sin(q*Math.PI*.86)*.45,s*dist+c*side*w)}}}geo.leaf.setAttribute('position',new T.Float32BufferAttribute(leaf,3));geo.leaf.computeVertexNormals();
- // Subtle rock surface variation; irregular silhouette instead of identical spheres.
- for(const k of ['rock','bush']){const p=geo[k].attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),f=1+.11*Math.sin(x*8+y*5+z*7)+.055*Math.cos(x*13-y*9);p.setXYZ(i,x*f,y*f,z*f)}geo[k].computeVertexNormals()}const types=Object.keys(geo),meshes={};for(const k of types){const m=new T.InstancedMesh(geo[k],visuals.material(0xffffff,k==='log'?'bark':k==='rock'||k==='shard'?'stone':'earth',{side:T.DoubleSide}),count);m.count=0;m.frustumCulled=false;m.receiveShadow=true;scene.add(m);meshes[k]=m}const dummy=new T.Object3D();let cx=Infinity,cz=Infinity;
- function update(x,z){const gx=Math.floor(x/15),gz=Math.floor(z/15);if(gx===cx&&gz===cz)return;cx=gx;cz=gz;const n=Object.fromEntries(types.map(k=>[k,0]));for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){if(dx*dx+dz*dz>13)continue;let seed=(((gx+dx)*739391)^((gz+dz)*19349663)^9123)>>>0;const r=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};for(let i=0;i<(coarse?5:12);i++){const px=(gx+dx+r())*15,pz=(gz+dz+r())*15,bi=biomeIndex(px,pz),v=r(),size=r(),rot=r()*TAU;const patch=.5+.28*Math.sin(px*.115+Math.cos(pz*.12)*2)+.22*Math.cos(pz*.16-px*.07);if(!dry(px,pz)||blocked(px,pz)||r()>(bi===0?.36:bi===1?.72:bi===2?.40:bi===3?.60:.58)*(.4+patch*.8))continue;const k=bi===0?(v<.35?'leaf':v<.80?'rock':v<.98?'bush':'log'):bi===1?(v<.56?'leaf':v<.72?'log':v<.89?'bush':'rock'):bi===2?(v<.87?'rock':'shard'):bi===3?(v<.66?'rock':'shard'):(v<.68?'leaf':v<.87?'log':'bush');if(n[k]>=count)continue;let sx=.2+size*.45,sy=sx,sz=sx,y=height(px,pz),rx=0;if(k==='leaf'){sx=sz=.55+size*.9;sy=.6+size*.6}else if(k==='log'){sx=sz=.12+size*.19;sy=.8+size*1.9;rx=Math.PI/2;y+=sx*.62}else if(k==='shard'){sx=sz=.13+size*.3;sy=.35+size*.9;y+=sy*.35}else if(k==='bush'){sx=sz=.35+size*.5;sy=.15+size*.22;y+=sy*.55}else{sy*=.42+patch*.65;y+=sy*.35}dummy.position.set(px,y,pz);dummy.rotation.set(0,rot,0);if(k==='log')dummy.rotateX(rx);else dummy.rotateZ(.14*Math.sin(i));dummy.scale.set(sx,sy,sz);dummy.updateMatrix();const colors={rock:[0x8f9580,0x707968,0xb3956c,0xc9d4d5,0x68786d],leaf:[0x73964a,0x3b713b,0x98984f,0x8baca8,0x577e45],log:[0x8f7651,0x69543c,0xc5ac79,0x9ca7a3,0x5d5942],shard:[0x88907a,0x687a68,0xd3a56f,0x9bcdd7,0x657b6b],bush:[0x789657,0x416d43,0x9c9a5b,0x9cafb0,0x4c6945]};const m=meshes[k];m.setMatrixAt(n[k],dummy.matrix);m.setColorAt(n[k],new T.Color(colors[k][bi]).multiplyScalar(.8+size*.35));n[k]++}}
- for(const k of types){const m=meshes[k];m.count=n[k];m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true}}
+// Stable, streamed harvestable ground objects. The same ID is used on every device.
+export function createDetails(T,scene,visuals,height,dry,biomeIndex,blocked,coarse,sync){
+ let cx=Infinity,cz=Infinity;
+ function update(x,z){
+  const gx=Math.floor(x/15),gz=Math.floor(z/15);if(gx===cx&&gz===cz)return;cx=gx;cz=gz;
+  const entries=[];
+  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
+   if(dx*dx+dz*dz>13)continue;const ax=gx+dx,az=gz+dz;let seed=((ax*739391)^(az*19349663)^9123)>>>0;
+   const r=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+   for(let i=0;i<12;i++){
+    const px=(ax+r())*15,pz=(az+r())*15,bi=biomeIndex(px,pz),v=r(),size=r(),rot=r()*TAU,gate=r();
+    const patch=.5+.28*Math.sin(px*.115+Math.cos(pz*.12)*2)+.22*Math.cos(pz*.16-px*.07);
+    if(Math.abs(px)>480||Math.abs(pz)>480||!dry(px,pz)||blocked(px,pz)||gate>(bi===0?.36:bi===1?.65:bi===2?.4:bi===3?.52:.5)*(.4+patch*.8))continue;
+    const kind=bi===0?(v<.35?'fiber':v<.8?'stone':v<.95?'fiber':'log'):bi===1?(v<.48?'fiber':v<.72?'log':v<.85?'fiber':'stone'):bi===2||bi===3?'stone':v<.64?'reed':v<.88?'log':'fiber';
+    const tier=size<.5?0:size<.85?1:2;
+    entries.push({id:'detail:'+ax+':'+az+':'+i,kind,x:px,z:pz,tier,rot});
+   }
+  }
+  sync(entries);
+ }
  return {update,invalidate(){cx=cz=Infinity}};
 }
 
