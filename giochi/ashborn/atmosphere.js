@@ -12,7 +12,8 @@ export function terrainArt(T,mat,coarse){
  const wet={value:0},sun={value:1};mat.bumpScale=.10;
  mat.onBeforeCompile=shader=>{shader.uniforms.ashSurface={value:tex};shader.uniforms.ashWet=wet;shader.uniforms.ashDay=sun;
  shader.vertexShader='attribute vec4 ashRegions;attribute float ashMarsh;varying vec4 vAshRegions;varying float vAshMarsh;varying vec3 vAshGround;varying float vAshSlope;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvAshGround=(modelMatrix*vec4(transformed,1.0)).xyz;vAshSlope=abs(normal.y);vAshRegions=ashRegions;vAshMarsh=ashMarsh;');
- shader.fragmentShader='uniform sampler2D ashSurface;uniform float ashWet;uniform float ashDay;varying vec4 vAshRegions;varying float vAshMarsh;varying vec3 vAshGround;varying float vAshSlope;\n'+shader.fragmentShader.replace('#include <map_fragment>',`
+ shader.fragmentShader='uniform sampler2D ashSurface;uniform float ashWet;uniform float ashDay;varying vec4 vAshRegions;varying float vAshMarsh;varying vec3 vAshGround;varying float vAshSlope;\n'+shader.fragmentShader.replace('#include <map_fragment>','').replace('#include <color_fragment>',`#include <color_fragment>
+
  vec2 ashP=vAshGround.xz;
  vec4 ashMacro=texture2D(ashSurface,ashP*.038);
  vec4 ashMicro=texture2D(ashSurface,ashP*.57);
