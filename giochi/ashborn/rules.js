@@ -42,7 +42,7 @@ export function load(raw){try{const a=JSON.parse(raw);if(![1,2,3,4,5].includes(a
 export const PIECES={
 bench:{name:'Banco da lavoro',cost:{wood:4},desc:'Posalo a terra, poi premi E per aprire le ricette esclusive.',hp:40},
 floor:{name:'Pavimento in tavole',cost:{plank:2},desc:'Fondazione quadrata 2 × 2.',hp:30},
-wall:{name:'Parete di legno',cost:{plank:2},desc:'Protegge la casa. Si aggancia ai lati dei pavimenti.',hp:35},
+wall:{name:'Parete di legno',cost:{plank:2},desc:'Protegge la casa. Punta un bordo del pavimento o la parte superiore di una parete per sovrapporla.',hp:35},
 door:{name:'Porta di legno',cost:{plank:3},desc:'Apri e chiudi con E.',hp:35},
 roof:{name:'Tetto di legno',cost:{plank:3},desc:'Copre un pavimento con almeno una parete di sostegno e offre riparo.',hp:30},
 fence:{name:'Recinzione',cost:{wood:3},desc:'Delimita la tua base.',hp:20},
@@ -60,26 +60,36 @@ export const cell=(n)=>Math.round(n/2)*2;
 export const isFloor=k=>k==='floor'||k==='stonebase';
 export const isEdge=k=>['wall','door','window','fence'].includes(k);
 export const isCover=k=>['roof','slopedroof','beam'].includes(k);
-export function planPiece(s,kind,x,z,rot,ground,dry=true){
+export const WALL_HEIGHT=2.16;
+export const isStackWall=k=>['wall','door','window'].includes(k);
+export const wallTop=b=>b.y+WALL_HEIGHT;
+export function planPiece(s,kind,x,z,rot,ground,dry=true,snap=null){
  const p=PIECES[kind];if(!p)return {ok:false,reason:'Pezzo sconosciuto'};
  rot=((Math.round(rot)%4)+4)%4;const edge=isEdge(kind);let cx=cell(x),cz=cell(z);
  if(edge){if(rot%2)cx=cell(x-1)+1;else cz=cell(z-1)+1;const candidates=[];for(const f of s.buildings.filter(b=>isFloor(b.kind)))for(const sign of [-1,1]){const q={x:f.x+(rot%2?sign:0),z:f.z+(rot%2?0:sign)};const d=Math.hypot(q.x-x,q.z-z);if(d<1.8)candidates.push({...q,d})}candidates.sort((a,b)=>a.d-b.d);if(candidates[0]){cx=candidates[0].x;cz=candidates[0].z}}
+ const support=snap?.supportId!=null?s.buildings.find(b=>b.id===snap.supportId&&isStackWall(b.kind)):null;
+ const stacked=isStackWall(kind)&&support&&support.kind!=='door';
+ if(stacked){cx=support.x;cz=support.z;rot=support.rot}
  const floor=s.buildings.find(b=>isFloor(b.kind)&&b.x===cx&&b.z===cz),adj=edge?s.buildings.filter(b=>isFloor(b.kind)&&(rot%2?b.z===cz&&Math.abs(b.x-cx)===1:b.x===cx&&Math.abs(b.z-cz)===1)):[],base=floor||adj[0];
- const neighbor=s.buildings.find(b=>isFloor(b.kind)&&Math.abs(b.x-cx)+Math.abs(b.z-cz)===2);const y=isFloor(kind)?(neighbor?neighbor.y:ground(cx,cz)+.12):['roof','slopedroof','beam'].includes(kind)?(floor?.y??ground(cx,cz))+2.4:base?base.y+.14:ground(cx,cz);
+ const neighbor=s.buildings.find(b=>isFloor(b.kind)&&Math.abs(b.x-cx)+Math.abs(b.z-cz)===2);const baseY=isFloor(kind)?(neighbor?neighbor.y:ground(cx,cz)+.12):['roof','slopedroof','beam'].includes(kind)?(floor?.y??ground(cx,cz))+2.4:base?base.y+.14:ground(cx,cz);
+ const elevatedCover=isCover(kind)&&support&&floor&&Math.abs(support.x-cx)+Math.abs(support.z-cz)===1;
+ const y=stacked?wallTop(support):elevatedCover?wallTop(support)+.10:baseY;
  const b={kind,x:cx,y,z:cz,rot};let reason='';
  if(!dry||Math.abs(cx)>LIMIT||Math.abs(cz)>LIMIT)reason='Terreno non valido';
  else if(Math.hypot(s.x-cx,s.z-cz)>7)reason='Troppo lontano';
+ else if(Math.hypot(s.x-cx,s.z-cz,Math.max(0,y-ground(s.x,s.z)-1.4))>7.5)reason='Pezzo troppo alto o lontano';
  else if(s.buildings.length>=450)reason='Limite costruzioni raggiunto';
  else if(isFloor(kind)&&neighbor&&Math.abs(neighbor.y-ground(cx,cz))>1.15)reason='Terreno troppo irregolare';
- else if(['wall','door','window'].includes(kind)&&!adj.length)reason='Serve un pavimento adiacente';
+ else if(isStackWall(kind)&&!stacked&&!adj.length)reason='Serve un pavimento adiacente';
  else if(['roof','slopedroof','beam'].includes(kind)&&!floor)reason='Serve un pavimento sotto il tetto';
  else if(['roof','slopedroof','beam'].includes(kind)&&!s.buildings.some(q=>(['wall','door','window'].includes(q.kind)&&Math.abs(q.x-cx)+Math.abs(q.z-cz)===1)||(q.kind==='post'&&q.x===cx&&q.z===cz)))reason='Serve una parete o una porta di sostegno';
- else if(s.buildings.some(q=>q.x===cx&&q.z===cz&&(q.kind===kind||edge&&isEdge(q.kind)||isFloor(kind)&&isFloor(q.kind)||['roof','slopedroof'].includes(kind)&&['roof','slopedroof'].includes(q.kind)||['bench','firebowl','post'].includes(kind)&&['bench','firebowl','post'].includes(q.kind))))reason='Spazio occupato';
+ else if(s.buildings.some(q=>q.x===cx&&q.z===cz&&Math.abs(q.y-y)<.55&&(q.kind===kind||edge&&isEdge(q.kind)||isFloor(kind)&&isFloor(q.kind)||['roof','slopedroof'].includes(kind)&&['roof','slopedroof'].includes(q.kind)||['bench','firebowl','post'].includes(kind)&&['bench','firebowl','post'].includes(q.kind))))reason='Spazio occupato';
  else if(!(kind==='bench'&&s.inventory.bench>0)&&!has(s,p.cost))reason='Materiali insufficienti';
  return {ok:!reason,reason,piece:b};
 }
 export function placePiece(s,plan){if(!plan?.ok||!PIECES[plan.piece.kind])return null;const packed=plan.piece.kind==='bench'&&s.inventory.bench>0;if(!packed&&!has(s,PIECES[plan.piece.kind].cost))return null;const b={...plan.piece,id:s.nextBuildId++,open:false};if(packed)take(s,'bench');else for(const [k,n] of Object.entries(PIECES[b.kind].cost))take(s,k,n);s.buildings.push(b);return b}
-export function removePiece(s,id){const i=s.buildings.findIndex(b=>b.id===id);if(i<0)return false;const b=s.buildings[i];s.buildings.splice(i,1);for(const [k,n] of Object.entries(PIECES[b.kind].cost))add(s,k,n);return true}
+export function upperWallDepends(s,b){return isStackWall(b.kind)&&s.buildings.some(q=>isStackWall(q.kind)&&q.x===b.x&&q.z===b.z&&q.rot%2===b.rot%2&&Math.abs(q.y-wallTop(b))<.12)}
+export function removePiece(s,id){const i=s.buildings.findIndex(b=>b.id===id);if(i<0)return false;const b=s.buildings[i];if(upperWallDepends(s,b))return false;s.buildings.splice(i,1);for(const [k,n] of Object.entries(PIECES[b.kind].cost))add(s,k,n);return true}
 
 export function jumpStep(y,v,dt){const speed=v-14*dt,next=y+speed*dt;return next<=0?{y:0,v:0}:{y:next,v:speed}}
 export function biomeWeights(x,z){const wx=x+36*Math.sin(z*.016)+23*Math.sin((x+z)*.031),wz=z+42*Math.sin(x*.013)-18*Math.cos((x-z)*.027);const sites=[[0,0],[-275,-45],[265,35],[20,-310],[-25,300],[-355,260],[350,-250],[320,330],[-300,-340]],types=[0,1,2,3,4,4,2,1,3];const d=Array(5).fill(Infinity);for(let i=0;i<sites.length;i++)d[types[i]]=Math.min(d[types[i]],Math.hypot(wx-sites[i][0],wz-sites[i][1])+(types[i]===0?0:20));const min=Math.min(...d),weights=d.map(v=>Math.exp(-(v-min)/22)),sum=weights.reduce((a,b)=>a+b,0);return weights.map(v=>v/sum)}
