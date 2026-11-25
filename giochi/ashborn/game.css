@@ -92,3 +92,6 @@ button.radar{cursor:pointer;padding:0;color:inherit}button.radar:hover{border-co
 
 /* Audio controls stay on a single compact settings screen. */
 #settings .settings-panel{gap:clamp(3px,1.05dvh,9px)}#settings .setting-row{gap:3px}#settings .settings-panel .primary,#settings .settings-panel .secondary{padding:clamp(5px,1.15dvh,11px) 8px}#settings .audio-row{border-top:1px solid #8a775633;padding-top:4px}@media(max-height:520px){#settings .settings-panel{width:min(660px,95vw);grid-template-columns:1fr 1fr;gap:5px 14px;padding:10px}#settings .panel-head{grid-column:1/-1}#settings .setting-row{font-size:10px}#settings .setting-row input[type=range]{height:12px}#settings .settings-panel button{font-size:10px}}
+
+/* Visual Overhaul: subtle edge shading, entirely outside the interactive HUD. */
+#world::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,transparent 55%,rgba(5,14,14,.12) 100%);z-index:1}
