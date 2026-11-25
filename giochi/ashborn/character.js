@@ -50,9 +50,9 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  function absRotation(i,child,desired){return Q().setFromUnitVectors(jointPos[child].clone().sub(jointPos[i]).normalize(),desired.normalize())}
  function pair(i,j,k,d1,d2,tip=null){const a=absRotation(i,j,d1),b=absRotation(j,k,d2);bones[i].quaternion.copy(a);bones[j].quaternion.copy(a.clone().invert().multiply(b));bones[k].quaternion.copy(tip?b.clone().invert().multiply(tip):Q());return b}
  let neutralHand=[],neutralFoot=null;
- function animate(phase=0,speed=0,jumping=false,attack=0,time=0){const walk=clamp(speed/3.6,0,1),run=clamp((speed-3.6)/3.2,0,1),amp=walk*(.42+run*.23);let lowest=Infinity;
-  for(let i=0;i<2;i++){const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,w=Math.sin(phase+i*Math.PI),c=Math.cos(phase+i*Math.PI),legAngle=jumping?(i===0?-.5:.24):w*amp,armAngle=jumping?-.48:-w*amp*.78,hit=i===0?0:attack,upper=hit>0?-1.4*hit:armAngle;
-   const leg1=V(side*.042,-1,0).applyQuaternion(qx(legAngle)),leg2=V(side*.02,-1,0).applyQuaternion(qx(legAngle+(!jumping?Math.max(0,-c)*walk*(.52+run*.25):.57)));
+ function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1){const walk=clamp(speed/3.6,0,1),run=clamp((speed-3.6)/3.2,0,1),amp=walk*(.42+run*.23);let lowest=Infinity;
+  for(let i=0;i<2;i++){const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,w=Math.sin(phase+i*Math.PI),c=Math.cos(phase+i*Math.PI),legAngle=jumping?(i===0?-.5:.24):w*amp*forward,armAngle=jumping?-.48:-w*amp*.78*forward,hit=i===0?0:attack,upper=hit>0?-1.4*hit:armAngle;
+   const sideSwing=jumping?0:-w*amp*.78*strafe,leg1=V(side*.042+sideSwing,-1,0).applyQuaternion(qx(legAngle)),leg2=V(side*.02+sideSwing*.65,-1,0).applyQuaternion(qx(legAngle+(!jumping?Math.max(0,-c)*walk*(.52+run*.25)*(1-.55*Math.abs(strafe)):.57)));
    pair(l,l+1,l+2,leg1,leg2,qx(jumping?.16:legAngle*.18));const footY=jointPos[l].y+leg1.y*jointPos[l+1].distanceTo(jointPos[l])+leg2.y*jointPos[l+2].distanceTo(jointPos[l+1]);lowest=Math.min(lowest,footY);
    const arm1=V(side*.20,-1,.02).applyQuaternion(qx(upper)),arm2=V(side*.055,-1,.10).applyQuaternion(qx(upper-(hit>0?.55*hit:.13+walk*.18)));
    const r=pair(a,a+1,a+2,arm1,arm2);if(!neutralHand[i])neutralHand[i]=r.clone();
