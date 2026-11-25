@@ -1,5 +1,5 @@
 // Pure survival rules — independent of rendering.
-export const ITEMS={bench:'Banco da lavoro',hoe:'Zappa di pietra',sapling:'Germoglio di albero',wood:'Legna',stone:'Pietra',fiber:'Fibra',berries:'Bacche',hide:'Pelle',meat:'Carne cruda',food:'Carne cotta',axe:'Ascia di pietra',pickaxe:'Piccone di pietra',sword:'Spada di pietra',spear:'Lancia',tunic:'Tunica',boots:'Calzari',campfire:'Falò',hammer:'Martello',plank:'Tavole di legno',flint:'Selce',resin:'Resina',mushroom:'Funghi',clay:'Argilla',copper:'Minerale di rame',torch:'Torcia',flintaxe:'Ascia di selce',oak:'Legno di quercia',cactus:'Frutto del deserto',icecrystal:'Cristallo di gelo',reed:'Giunco palustre',amber:'Ambra',bone:'Ossa',fang:'Zanna',fur:'Pelliccia',venom:'Essenza palustre',linen:'Tela grezza',wintercoat:'Mantello di pelliccia'};
+export const ITEMS={bench:'Banco da lavoro',hoe:'Zappa di pietra',sapling:'Germoglio di albero',wood:'Legna',stone:'Pietra',fiber:'Fibra',berries:'Bacche',hide:'Pelle',meat:'Carne cruda',food:'Carne cotta',axe:'Ascia di pietra',pickaxe:'Piccone di pietra',sword:'Spada di pietra',spear:'Lancia',tunic:'Tunica',boots:'Calzari',campfire:'Falò',hammer:'Martello di pietra',plank:'Tavole di legno',flint:'Selce',resin:'Resina',mushroom:'Funghi',clay:'Argilla',copper:'Minerale di rame',torch:'Torcia',flintaxe:'Ascia di selce',oak:'Legno di quercia',cactus:'Frutto del deserto',icecrystal:'Cristallo di gelo',reed:'Giunco palustre',amber:'Ambra',bone:'Ossa',fang:'Zanna',fur:'Pelliccia',venom:'Essenza palustre',linen:'Tela grezza',wintercoat:'Mantello di pelliccia'};
 export const RECIPES=[
 {id:'bench',name:'Banco da lavoro',cost:{wood:4},desc:'Crea il banco e posizionalo sul terreno. Premi E accanto ad esso per aprire le ricette avanzate.'},
 {id:'axe',name:'Ascia di pietra',cost:{wood:2,stone:3,fiber:1},desc:'5 danni al legno per colpo.'},
@@ -9,20 +9,20 @@ export const RECIPES=[
 {id:'tunic',name:'Tunica grezza',cost:{fiber:6,hide:1},desc:'Protegge dal freddo notturno.'},
 {id:'boots',name:'Calzari',cost:{fiber:3,hide:1},desc:'Consuma meno energia correndo.'},
 {id:'campfire',name:'Falò',cost:{wood:5,stone:4},desc:'Posiziona un fuoco, scaldati e cucina.'},
-{id:'hammer',name:'Martello',cost:{wood:3,stone:2},desc:'Apre la modalità costruzione.'},
-{id:'plank',name:'Tavole di legno',cost:{wood:2},qty:4,bench:true,desc:'Quattro tavole per costruire pavimenti e pareti.'},
+{id:'hammer',name:'Martello di pietra',cost:{wood:3,stone:2},desc:'Equipaggialo e premi il tasto destro per costruire e lavorare le tavole ovunque.'},
+{id:'plank',name:'Tavole di legno',cost:{wood:2},qty:4,hammer:true,desc:'Quattro tavole ottenute con il martello, senza banco da lavoro.'},
 {id:'torch',name:'Torcia',cost:{wood:1,resin:2},bench:true,desc:'Illumina la notte se equipaggiata.'},
 {id:'flintaxe',name:'Ascia di selce',cost:{wood:3,flint:4,fiber:2},bench:true,desc:'8 danni al legno per colpo.'},
 {id:'food',name:'Cuoci la carne',cost:{meat:1},fire:true,desc:'Richiede un falò vicino.'}];
 export const LIMIT=480;
-for(const r of RECIPES)if(!['bench','hammer','campfire','axe','food'].includes(r.id))r.bench=true;
+for(const r of RECIPES)if(!['bench','hammer','campfire','axe','food','plank'].includes(r.id))r.bench=true;
 RECIPES.push({id:'hoe',name:'Zappa di pietra',cost:{wood:3,stone:3,fiber:1},bench:true,desc:'Modifica il terreno: alza, abbassa o livella il suolo.'},{id:'sapling',name:'Germoglio di albero',cost:{wood:1,resin:1},bench:true,desc:'Pianta un nuovo albero sul terreno libero.'},{id:'linen',name:'Tela grezza',cost:{fiber:3,reed:2},qty:2,bench:true,desc:'Tessuto ricavato da fibre e giunchi.'},{id:'wintercoat',name:'Mantello di pelliccia',cost:{fur:3,linen:2},bench:true,desc:'Protezione dal freddo, anche sulle montagne.'});
 export const LIMIT_OLD=230;
 export const WEAPONS=['axe','pickaxe','sword','spear','hammer','torch','flintaxe','hoe'];
 export const QUICK_ITEMS=[...WEAPONS,'bench','sapling','tunic','boots','wintercoat','berries','food','mushroom','cactus'];
-export const HP={wood:15,stone:12,fiber:3,berries:3,chest:10,wolf:55,boar:70,deer:40,flint:5,clay:8,copper:18,mushroom:2,oak:25,cactus:4,icecrystal:22,reed:4,amber:12,rabbit:18,fox:32,scorpion:45,icewolf:80,crocodile:95,shade:45,forestwraith:65,sandstalker:70,frostwraith:90,swampwraith:80};
+export const HP={wood:15,stone:12,log:18,fiber:3,berries:3,chest:10,wolf:55,boar:70,deer:40,flint:5,clay:8,copper:18,mushroom:2,oak:25,cactus:4,icecrystal:22,reed:4,amber:12,rabbit:18,fox:32,scorpion:45,icewolf:80,crocodile:95,shade:45,forestwraith:65,sandstalker:70,frostwraith:90,swampwraith:80};
 export const DAMAGE={hand:{wood:1,stone:1,fiber:1,berries:1,chest:1,animal:5},axe:{wood:5,stone:1,fiber:2,berries:2,chest:5,animal:14},pickaxe:{wood:1,stone:6,fiber:1,berries:1,chest:2,animal:10},sword:{wood:1,stone:1,fiber:3,berries:3,chest:2,animal:30},spear:{wood:1,stone:1,fiber:1,berries:1,chest:1,animal:24}};
-export const hitDamage=(weapon,kind)=>{const k=['wolf','boar','deer','rabbit','fox','scorpion','icewolf','crocodile','shade','forestwraith','sandstalker','frostwraith','swampwraith'].includes(kind)?'animal':['flint','clay','copper','icecrystal','amber'].includes(kind)?'stone':kind==='oak'?'wood':kind==='reed'?'fiber':['mushroom','cactus'].includes(kind)?'berries':kind;return (weapon==='flintaxe'?{...DAMAGE.axe,wood:8,animal:20}:weapon==='hammer'?{...DAMAGE.hand,wood:2,stone:2}:DAMAGE[weapon]||DAMAGE.hand)[k]||1};
+export const hitDamage=(weapon,kind)=>{const k=['wolf','boar','deer','rabbit','fox','scorpion','icewolf','crocodile','shade','forestwraith','sandstalker','frostwraith','swampwraith'].includes(kind)?'animal':['flint','clay','copper','icecrystal','amber'].includes(kind)?'stone':['oak','log'].includes(kind)?'wood':kind==='reed'?'fiber':['mushroom','cactus'].includes(kind)?'berries':kind;return (weapon==='flintaxe'?{...DAMAGE.axe,wood:8,animal:20}:weapon==='hammer'?{...DAMAGE.hand,wood:2,stone:2}:DAMAGE[weapon]||DAMAGE.hand)[k]||1};
 export function movement(x,z,yaw){return {dx:-Math.cos(yaw)*x+Math.sin(yaw)*z,dz:Math.sin(yaw)*x+Math.cos(yaw)*z}}
 export function assignSlot(s,i,id){if(!Number.isInteger(i)||i<0||i>8||id!==null&&!s.inventory[id])return false;if(id){const previous=s.hotbar.indexOf(id);if(previous>=0)s.hotbar[previous]=null}s.hotbar[i]=id;if(i===s.selected||!s.hotbar[s.selected])selectSlot(s,s.selected);return true}
 export function selectSlot(s,i){if(!Number.isInteger(i)||i<0||i>8)return false;s.selected=i;const id=s.hotbar[i];s.equipped.weapon=WEAPONS.includes(id)&&s.inventory[id]?id:null;return true}
@@ -32,7 +32,7 @@ export const clamp=(n,a=0,b=100)=>Math.max(a,Math.min(b,n));
 export function add(s,id,n=1){if(!ITEMS[id]||!Number.isFinite(n)||n<=0)return;s.inventory[id]=(s.inventory[id]||0)+n;if(QUICK_ITEMS.includes(id)&&!s.hotbar.includes(id)){const i=s.hotbar.findIndex((v,i)=>i>0&&v===null);if(i>=0)s.hotbar[i]=id}}
 export function has(s,cost){return Object.entries(cost).every(([k,n])=>(s.inventory[k]||0)>=n)}
 export function take(s,id,n=1){if((s.inventory[id]||0)<n)return false;s.inventory[id]-=n;if(!s.inventory[id]){delete s.inventory[id];for(let i=0;i<9;i++)if(s.hotbar[i]===id)s.hotbar[i]=null;if(s.equipped.weapon===id)s.equipped.weapon=null}return true}
-export function craft(s,id,nearFire=false,nearBench=false){const r=RECIPES.find(x=>x.id===id);if(!r||!has(s,r.cost)||r.fire&&!nearFire||r.bench&&!nearBench)return false;if([...WEAPONS,'tunic','boots','wintercoat'].includes(id)&&s.inventory[id])return false;for(const [k,n] of Object.entries(r.cost))take(s,k,n);add(s,id,r.qty||1);return true}
+export function craft(s,id,nearFire=false,nearBench=false){const r=RECIPES.find(x=>x.id===id);if(!r||!has(s,r.cost)||r.fire&&!nearFire||r.bench&&!nearBench||r.hammer&&s.equipped.weapon!=='hammer')return false;if([...WEAPONS,'tunic','boots','wintercoat'].includes(id)&&s.inventory[id])return false;for(const [k,n] of Object.entries(r.cost))take(s,k,n);add(s,id,r.qty||1);return true}
 export function equip(s,id){if(!(s.inventory[id]>0))return false;if(WEAPONS.includes(id)){if(s.equipped.weapon===id){const empty=s.hotbar.findIndex(v=>v===null);if(empty>=0)selectSlot(s,empty);else assignSlot(s,s.selected,null);s.equipped.weapon=null}else{let i=s.hotbar.indexOf(id);if(i<0){i=s.hotbar.findIndex(v=>v===null);if(i<0)i=s.selected;assignSlot(s,i,id)}selectSlot(s,i)}}else if(id==='tunic'||id==='boots'||id==='wintercoat')s.equipped[id]=!s.equipped[id];else return false;return true}
 export function eat(s,id){if(!['berries','food','mushroom','cactus'].includes(id)||!take(s,id))return false;s.hunger=clamp(s.hunger+(id==='food'?38:id==='mushroom'?18:id==='cactus'?22:13));s.health=clamp(s.health+(id==='food'?6:1));return true}
 export function drink(s){s.thirst=clamp(s.thirst+45)}
@@ -41,19 +41,19 @@ export function load(raw){try{const a=JSON.parse(raw);if(![1,2,3,4,5].includes(a
 
 export const PIECES={
 bench:{name:'Banco da lavoro',cost:{wood:4},desc:'Posalo a terra, poi premi E per aprire le ricette esclusive.',hp:40},
-floor:{name:'Pavimento in tavole',cost:{plank:2},desc:'Fondazione quadrata 2 × 2.',hp:30,bench:true},
-wall:{name:'Parete di legno',cost:{plank:2},desc:'Protegge la casa. Si aggancia ai lati dei pavimenti.',hp:35,bench:true},
-door:{name:'Porta di legno',cost:{plank:3},desc:'Apri e chiudi con E.',hp:35,bench:true},
-roof:{name:'Tetto di legno',cost:{plank:3},desc:'Copre un pavimento con almeno una parete di sostegno e offre riparo.',hp:30,bench:true},
-fence:{name:'Recinzione',cost:{wood:3},desc:'Delimita la tua base.',hp:20,bench:true},
-post:{name:'Palo di legno',cost:{wood:2},desc:'Palo verticale per sostenere i tetti.',hp:30,bench:true},
-beam:{name:'Trave di legno',cost:{plank:2},desc:'Trave orizzontale sopra un pavimento.',hp:30,bench:true},
-window:{name:'Parete con finestra',cost:{plank:3},desc:'Parete con apertura per far entrare la luce.',hp:30,bench:true},
-ramp:{name:'Rampa di legno',cost:{plank:3},desc:'Accesso inclinato alla fondazione.',hp:25,bench:true},
-slopedroof:{name:'Tetto inclinato',cost:{plank:4},desc:'Copertura inclinata per il rifugio.',hp:35,bench:true},
-stonebase:{name:'Fondazione di pietra',cost:{stone:6},desc:'Base solida in pietra per il tuo rifugio.',hp:65,bench:true},
-stairs:{name:'Scala di legno',cost:{plank:4},desc:'Gradini per raggiungere un pavimento rialzato.',hp:30,bench:true},
-firebowl:{name:'Braciere',cost:{stone:5,wood:2,resin:1},desc:'Illumina e riscalda la base.',hp:30,bench:true}
+floor:{name:'Pavimento in tavole',cost:{plank:2},desc:'Fondazione quadrata 2 × 2.',hp:30},
+wall:{name:'Parete di legno',cost:{plank:2},desc:'Protegge la casa. Si aggancia ai lati dei pavimenti.',hp:35},
+door:{name:'Porta di legno',cost:{plank:3},desc:'Apri e chiudi con E.',hp:35},
+roof:{name:'Tetto di legno',cost:{plank:3},desc:'Copre un pavimento con almeno una parete di sostegno e offre riparo.',hp:30},
+fence:{name:'Recinzione',cost:{wood:3},desc:'Delimita la tua base.',hp:20},
+post:{name:'Palo di legno',cost:{wood:2},desc:'Palo verticale per sostenere i tetti.',hp:30},
+beam:{name:'Trave di legno',cost:{plank:2},desc:'Trave orizzontale sopra un pavimento.',hp:30},
+window:{name:'Parete con finestra',cost:{plank:3},desc:'Parete con apertura per far entrare la luce.',hp:30},
+ramp:{name:'Rampa di legno',cost:{plank:3},desc:'Accesso inclinato alla fondazione.',hp:25},
+slopedroof:{name:'Tetto inclinato',cost:{plank:4},desc:'Copertura inclinata per il rifugio.',hp:35},
+stonebase:{name:'Fondazione di pietra',cost:{stone:6},desc:'Base solida in pietra per il tuo rifugio.',hp:65},
+stairs:{name:'Scala di legno',cost:{plank:4},desc:'Gradini per raggiungere un pavimento rialzato.',hp:30},
+firebowl:{name:'Braciere',cost:{stone:5,wood:2,resin:1},desc:'Illumina e riscalda la base.',hp:30}
 };
 export const benchNear=(s,x=s.x,z=s.z)=>s.buildings.some(b=>b.kind==='bench'&&Math.hypot(b.x-x,b.z-z)<=22);
 export const cell=(n)=>Math.round(n/2)*2;
@@ -70,7 +70,6 @@ export function planPiece(s,kind,x,z,rot,ground,dry=true){
  if(!dry||Math.abs(cx)>LIMIT||Math.abs(cz)>LIMIT)reason='Terreno non valido';
  else if(Math.hypot(s.x-cx,s.z-cz)>7)reason='Troppo lontano';
  else if(s.buildings.length>=450)reason='Limite costruzioni raggiunto';
- else if(p.bench&&(!benchNear(s)||!benchNear(s,cx,cz)))reason='Serve un banco da lavoro vicino';
  else if(isFloor(kind)&&neighbor&&Math.abs(neighbor.y-ground(cx,cz))>1.15)reason='Terreno troppo irregolare';
  else if(['wall','door','window'].includes(kind)&&!adj.length)reason='Serve un pavimento adiacente';
  else if(['roof','slopedroof','beam'].includes(kind)&&!floor)reason='Serve un pavimento sotto il tetto';
