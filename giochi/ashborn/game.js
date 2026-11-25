@@ -10,26 +10,33 @@ const $=id=>document.getElementById(id),all=s=>[...document.querySelectorAll(s)]
 // Continuous steering with a stable heading, no camera-to-input feedback loop.
 const wrapAngle=a=>Math.atan2(Math.sin(a),Math.cos(a));
 const smoothFactor=(rate,dt)=>1-Math.exp(-rate*dt);
-function steerMovement(x,z,previous,heading,dt,running=false,facing=heading){
+// Pure lateral movement uses the actual view as an immutable reference.
+function steerMovement(x,z,previous,heading,dt,running=false,facing=heading,view=heading){
  const side=Math.abs(x)>.1?Math.sign(x):0,forward=Math.abs(z)>.1?Math.sign(z):0;
  if(!side&&!forward)return null;
  const mode=forward>0?(side?'curve':'forward'):(side?'strafe':'back');
+ const wasLateral=previous?.mode==='strafe'||previous?.mode==='back';
  let target=previous?.heading??heading,turnRate=previous?.turnRate??0;
+ if(mode==='strafe'||mode==='back'){
+  const anchor=wasLateral?previous.anchor:view;
+  return {mode,side,heading:anchor,anchor,turnRate:0};
+ }
+ if(wasLateral){target=previous.anchor;turnRate=0}
  if(mode==='curve'){
   const wanted=-side*(running?1.05:1.45)*Math.min(1,Math.abs(x));
   turnRate+=(wanted-turnRate)*smoothFactor(9,dt);target+=turnRate*dt;
- }else{
-  turnRate=0;
-  // No forward key: freeze the facing direction, never turn with lateral/back input.
-  if(mode==='strafe'||mode==='back')target=previous?.mode==='strafe'||previous?.mode==='back'?heading:facing;
- }
+ }else turnRate=0;
  return {mode,side,heading:wrapAngle(target),turnRate};
 }
 function locomotionVector(x,z,yaw,speed,steering){
  if(!steering)return {x:0,z:0};
  if(steering.mode==='curve'||steering.mode==='forward')return {x:Math.sin(yaw)*speed,z:Math.cos(yaw)*speed};
- const len=Math.max(.001,Math.hypot(x,z)),side=x/len,back=Math.min(0,z)/len;
- return {x:(-Math.cos(yaw)*side+Math.sin(yaw)*back)*speed,z:(Math.sin(yaw)*side+Math.cos(yaw)*back)*speed};
+ const angle=steering.anchor,len=Math.max(.001,Math.hypot(x,z)),side=x/len,back=Math.min(0,z)/len;
+ return {x:(-Math.cos(angle)*side+Math.sin(angle)*back)*speed,z:(Math.sin(angle)*side+Math.cos(angle)*back)*speed};
+}
+function removeForwardDrift(vx,vz,angle){
+ const lateral=-vx*Math.cos(angle)+vz*Math.sin(angle);
+ return {x:-Math.cos(angle)*lateral,z:Math.sin(angle)*lateral};
 }
 function approachAngle(current,target,rate,dt,maxRate=Infinity){
  const delta=wrapAngle(target-current),change=delta*smoothFactor(rate,dt);
@@ -332,23 +339,22 @@ const len=Math.hypot(x,z),active=len>.1,running=active&&(keys.has('Shift')||runT
 let speed=active?(running?6.8:3.6)*Math.min(1,len):0;
 if(!insideInstance&&waterDist(s.x,s.z)<18)speed*=.65;
 if(active){
- steering=steerMovement(x,z,steering,camHeadingTarget,dt,running,s.yaw);
+ steering=steerMovement(x,z,steering,camHeadingTarget,dt,running,s.yaw,camYaw);
  if(steering)camHeadingTarget=steering.heading;
 }else steering=null;
 const lateral=steering?.mode==='strafe'||steering?.mode==='back';
-if(lateral){s.yaw=camHeadingTarget;bodyTurnVelocity=0}
-else{const bodyMotion=smoothBodyTurn(s.yaw,camHeadingTarget,bodyTurnVelocity,dt,running);s.yaw=bodyMotion.yaw;bodyTurnVelocity=bodyMotion.omega}
+const bodyMotion=smoothBodyTurn(s.yaw,camHeadingTarget,bodyTurnVelocity,dt,running);s.yaw=bodyMotion.yaw;bodyTurnVelocity=bodyMotion.omega;
 const wanted=locomotionVector(x,z,s.yaw,speed,steering),wantedX=wanted.x,wantedZ=wanted.z;
 // Remove residual forward momentum when entering a pure sideways step.
-if(lateral&&Math.abs(z)<=.1){const longitudinal=velocityX*Math.sin(s.yaw)+velocityZ*Math.cos(s.yaw);velocityX-=longitudinal*Math.sin(s.yaw);velocityZ-=longitudinal*Math.cos(s.yaw)}
+if(lateral&&Math.abs(z)<=.1){const v=removeForwardDrift(velocityX,velocityZ,steering.anchor);velocityX=v.x;velocityZ=v.z}
 
 const accel=smoothFactor(active?10:16,dt);velocityX+=(wantedX-velocityX)*accel;velocityZ+=(wantedZ-velocityZ)*accel;
 if(!active&&Math.hypot(velocityX,velocityZ)<.025)velocityX=velocityZ=0;
 const allowed=(nx,nz)=>!blockedByBuild(nx,nz)&&(insideInstance||!trees.some(t=>t.g.visible&&Math.hypot(nx-t.x,nz-t.z)<t.r+.25)&&!resources.some(r=>r.solid&&r.g.visible&&Math.hypot(nx-r.x,nz-r.z)<r.solid+.22));
 const nx=clamp(s.x+velocityX*dt,-LIMIT,LIMIT),nz=clamp(s.z+velocityZ*dt,-LIMIT,LIMIT);
-if(allowed(nx,nz)){s.x=nx;s.z=nz}else{if(allowed(nx,s.z))s.x=nx;else velocityX=0;if(allowed(s.x,nz))s.z=nz;else velocityZ=0}
+if(allowed(nx,nz)){s.x=nx;s.z=nz}else if(lateral&&Math.abs(z)<=.1){velocityX=velocityZ=0}else{if(allowed(nx,s.z))s.x=nx;else velocityX=0;if(allowed(s.x,nz))s.z=nz;else velocityZ=0}
 moveSpeed=Math.hypot(velocityX,velocityZ);
-camYaw=approachAngle(camYaw,s.yaw,5.8,dt,3.1);
+if(lateral)camYaw=steering.anchor;else camYaw=approachAngle(camYaw,s.yaw,5.8,dt,3.1);
 camPitch+=(camPitchTarget-camPitch)*smoothFactor(9,dt);
 camDistance+=(camDistanceTarget-camDistance)*smoothFactor(7,dt);
 tick(s,dt,{running,warm:nearFire()||sheltered(),cold:!insideInstance&&biomeIndex(s.x,s.z)===3});attackCooldown=Math.max(0,attackCooldown-dt);attackTime=Math.max(0,attackTime-dt);wolfTick(dt);refreshResources();if(s.health<=0){death();return}actor.root.position.set(s.x,walkHeight(s.x,s.z)+jumpY,s.z);actor.root.rotation.y=s.yaw;walkPhase+=dt*(moveSpeed>4?12:8);actor.animate(walkPhase,moveSpeed,jumpY>0,attackTime>0?Math.sin((1-attackTime/.32)*Math.PI):0,s.elapsed,moveSpeed>.03?(-velocityX*Math.cos(s.yaw)+velocityZ*Math.sin(s.yaw))/moveSpeed:0,moveSpeed>.03?(velocityX*Math.sin(s.yaw)+velocityZ*Math.cos(s.yaw))/moveSpeed:1);for(const r of resources){if(r.shake>0){r.shake=Math.max(0,r.shake-dt);r.g.rotation.z=Math.sin(r.shake*80)*r.shake*.32}else if(r.g.rotation.z)r.g.rotation.z=0}toastTime-=dt;if(toastTime<=0)$('toast').hidden=true;hudClock+=dt;if(hudClock>.25){hudClock=0;updateHud()}saveClock+=dt;if(saveClock>8){saveClock=0;save()}}
@@ -403,7 +409,7 @@ canvas.addEventListener('pointermove',e=>{
  lastCursor={x:e.clientX,y:e.clientY};
  if((building||terrainActive)&&!centerAim)aim=lastCursor;
  if(!drag||drag.id!==e.pointerId)return;
- if(drag.orbit){const turn=-(e.clientX-drag.x)*.006;camHeadingTarget=wrapAngle(camHeadingTarget+turn);if(steering)steering={...steering,heading:wrapAngle(steering.heading+turn)};camPitchTarget=clamp(camPitchTarget+(e.clientY-drag.y)*.005,.02,1.02)}
+ if(drag.orbit){const turn=-(e.clientX-drag.x)*.006;camHeadingTarget=wrapAngle(camHeadingTarget+turn);if(steering){steering={...steering,heading:wrapAngle(steering.heading+turn)};if(steering.anchor!==undefined)steering.anchor=wrapAngle(steering.anchor+turn)};camPitchTarget=clamp(camPitchTarget+(e.clientY-drag.y)*.005,.02,1.02)}
  drag.x=e.clientX;drag.y=e.clientY;
 });
 canvas.addEventListener('pointerup',e=>{
