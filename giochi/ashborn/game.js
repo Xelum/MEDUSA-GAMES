@@ -1,10 +1,10 @@
 import {createMusic} from './music.js?v=22';
 import {ITEMS,RECIPES,DEFAULT_CHARACTER,LIMIT,WEAPONS,HP,biomeWeights,biomeIndex,LOCAL_RESOURCES,LOCAL_FAUNA,NIGHT_MOBS,jumpStep,isFloor,isEdge,isCover,isStackWall,wallTop,upperWallDepends,TERRAIN_STEP,terrainDelta,editTerrain,PIECES,treeGrowth,treeScale,chestSlots,depositChest,withdrawChest,moveChestSlot,groundDrop,collectDrop,breakChest,benchNear,planPiece,placePiece,removePiece,hitDamage,movement,assignSlot,selectSlot,fresh,clamp,add,has,take,craft,equip,eat,drink,tick,load} from './rules.js?v=21';
-import {createVisuals} from './visuals.js?v=14.1';
+import {createVisuals} from './visuals.js?v=30';
 import {createCharacter} from './character.js?v=16.5';
 import {createCombatAim} from './combat-aim.js?v=13';
 import {enclosed,entrance,makeInterior} from './interiors.js?v=21';
-import {terrainArt,weatherAt,createEnvironment} from './atmosphere.js?v=20';
+import {terrainArt,weatherAt,createEnvironment} from './atmosphere.js?v=30';
 import {SITES,worldHeight,oldBase,protectedSite,buildWorld,createDetails} from './world.js?v=21';
 import {LABELS as labels,SKINS as skinColors,HAIRS as hairColors,cleanLook,choiceHeight} from './choices.js?v=10';
 const $=id=>document.getElementById(id),all=s=>[...document.querySelectorAll(s)],KEY='ashborn-save-v1',PROFILE_KEY='ashborn-character-v1',SETTINGS_KEY='ashborn-settings-v1',TAU=Math.PI*2;
@@ -41,8 +41,8 @@ try{T=await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.modul
 const scene=new T.Scene();scene.background=new T.Color(0xa6bdc1);scene.fog=new T.FogExp2(0xa6bdc1,.009);
 const camera=new T.PerspectiveCamera(58,innerWidth/innerHeight,.1,450);
 let renderer;try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}catch(e){$('loading-text').textContent='WebGL non è disponibile su questo dispositivo. Prova ad attivare l’accelerazione hardware.';return}
-const coarse=matchMedia('(pointer: coarse)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,coarse?1.15:1.6));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.20;$('world').append(renderer.domElement);const visuals=createVisuals(T,renderer,coarse);const worldSky=visuals.sky(scene),fx=visuals.effects(scene);
-const hemi=new T.HemisphereLight(0xd8e9f7,0x55513a,2.0),sun=new T.DirectionalLight(0xffe2ad,2.6);scene.add(hemi,sun,sun.target);sun.castShadow=true;sun.shadow.mapSize.set(coarse?1024:2048,coarse?1024:2048);Object.assign(sun.shadow.camera,{left:-36,right:36,top:36,bottom:-36,near:1,far:125});sun.shadow.bias=-.00025;sun.shadow.normalBias=.035;sun.shadow.radius=2;
+const coarse=matchMedia('(pointer: coarse)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,coarse?1.15:1.6));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;$('world').append(renderer.domElement);const visuals=createVisuals(T,renderer,coarse);const worldSky=visuals.sky(scene),fx=visuals.effects(scene);
+const hemi=new T.HemisphereLight(0xd8e9f7,0x55513a,2.0),sun=new T.DirectionalLight(0xffe2ad,2.6);scene.add(hemi,sun,sun.target);sun.castShadow=true;sun.shadow.mapSize.set(coarse?1024:2048,coarse?1024:2048);Object.assign(sun.shadow.camera,{left:-36,right:36,top:36,bottom:-36,near:1,far:125});sun.shadow.bias=-.00025;sun.shadow.normalBias=.026;sun.shadow.radius=3;
 const V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
 const matCache=new Map();function mat(color){if(!matCache.has(color)){const r=(color>>16)&255,g=(color>>8)&255,b=color&255,kind=r>g*1.12&&g>b*1.12?'bark':Math.abs(r-g)<24&&Math.abs(g-b)<22?'stone':'earth';matCache.set(color,visuals.material(color,kind,{flatShading:false}))}return matCache.get(color)}
 const boxGeo=new T.BoxGeometry(1,1,1),sphereGeo=new T.IcosahedronGeometry(1,2),rockGeo=new T.IcosahedronGeometry(1,2),cylGeo=new T.CylinderGeometry(.8,1,1,12),coneGeo=new T.ConeGeometry(1,1,11);
@@ -56,7 +56,7 @@ const cone=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,coneGeo,c,x,y,z,sx,sy,sz,sh);
 function group(p,x=0,y=0,z=0){const g=new T.Group();g.position.set(x,y,z);p.add(g);return g}
 let seed=1219;function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}const rand=(a,b)=>a+random()*(b-a);
 const LAKES=[{x:-29,z:22,r:20},{x:142,z:-35,r:20},{x:-147,z:101,r:20},{x:18,z:167,r:20},{x:-38,z:-166,r:20},{x:350,z:90,r:20},{x:-350,z:-150,r:20},{x:130,z:-360,r:20},{x:-220,z:350,r:20},{x:370,z:340,r:20}],LAKE=LAKES[0];
-const BIOMES=[{name:'Valle del risveglio',base:0x61764a,light:0x92a36a,tree:[0x426641,0x527b49,0x6e8d51],rock:0x8a9184},{name:'Foresta degli antenati',base:0x344e36,light:0x57734a,tree:[0x284f38,0x365c3b,0x456a41],rock:0x6b766c},{name:'Deserto del sole',base:0x9f8250,light:0xcab17a,tree:[0x647c40,0x7b934b,0x9ba35c],rock:0xb18d69},{name:'Montagne del gelo',base:0x9aafaf,light:0xe1e7df,tree:[0x527278,0x6c9394,0xb4d0cf],rock:0x9ca6ae},{name:'Palude delle ombre',base:0x3e5444,light:0x687951,tree:[0x4c6045,0x5a7051,0x84915c],rock:0x6f8076}];
+const BIOMES=[{name:'Valle del risveglio',base:0x526c39,light:0x8ba662,tree:[0x3c6338,0x528044,0x71964e],rock:0x8a9184},{name:'Foresta degli antenati',base:0x2d4934,light:0x527a53,tree:[0x244b37,0x356345,0x507c48],rock:0x6b766c},{name:'Deserto del sole',base:0x9f8250,light:0xcab17a,tree:[0x647c40,0x7b934b,0x9ba35c],rock:0xb18d69},{name:'Montagne del gelo',base:0x9aafaf,light:0xe1e7df,tree:[0x527278,0x6c9394,0xb4d0cf],rock:0x9ca6ae},{name:'Palude delle ombre',base:0x3e5444,light:0x687951,tree:[0x4c6045,0x5a7051,0x84915c],rock:0x6f8076}];
 
 function biomeAt(x,z){return BIOMES[biomeIndex(x,z)]}
 function waterDist(x,z){return Math.min(...LAKES.map(l=>Math.hypot(x-l.x,z-l.z)))}
@@ -131,6 +131,29 @@ combatObstacles.push(...world.obstacles);world.update(0,0,0);
 // Lightweight instanced grass, drifting fog wisps and particles around the player.
 const foliageGeo=new T.ConeGeometry(.075,.40,5),foliageMat=new T.MeshStandardMaterial({color:0xffffff,roughness:1,flatShading:true}),foliage=new T.InstancedMesh(foliageGeo,foliageMat,4600),dummy=new T.Object3D(),windSeed=8917;let fseed=windSeed;const frand=()=>{fseed=(Math.imul(fseed,1664525)+1013904223)>>>0;return fseed/4294967296};
 let gi=0;for(let i=0;i<9000&&gi<4600;i++){const x=(frand()-.5)*960,z=(frand()-.5)*960,bi=biomeIndex(x,z);if(!dry(x,z)||bi===2&&i%4!==0||bi===3&&i%3!==0)continue;const y=height(x,z);dummy.position.set(x,y+.22,z);dummy.rotation.set((frand()-.5)*.4,frand()*TAU,(frand()-.5)*.4);dummy.scale.set(.7+frand(),.5+frand(),.7+frand());dummy.updateMatrix();foliage.setMatrixAt(gi,dummy.matrix);foliage.setColorAt(gi,new T.Color(BIOMES[bi].tree[gi%3]));gi++}foliage.count=gi;foliage.instanceMatrix.needsUpdate=true;if(foliage.instanceColor)foliage.instanceColor.needsUpdate=true;foliage.visible=false;scene.add(foliage);const decorBlocked=(x,z)=>protectedSite(x,z)||state!=='creator'&&s.buildings.some(b=>isFloor(b.kind)&&Math.abs(b.x-x)<1.06&&Math.abs(b.z-z)<1.06);const meadow=visuals.meadow(scene,height,dry,biomeIndex,BIOMES,decorBlocked),details=createDetails(T,scene,visuals,height,dry,biomeIndex,decorBlocked,coarse,syncDetails),environment=createEnvironment(T,scene,height,coarse);
+// Soft billboard light shafts, anchored to nearby canopies. Not volumetric ray marching.
+const shaftRoot=new T.Group();scene.add(shaftRoot);
+const shaftGeometry=new T.PlaneGeometry(1,1),shaftUniforms={tint:{value:new T.Color(0xffdf9b)},strength:{value:0}};
+const shaftMaterial=new T.ShaderMaterial({uniforms:shaftUniforms,transparent:true,depthWrite:false,depthTest:true,side:T.DoubleSide,blending:T.AdditiveBlending,toneMapped:false,
+vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+fragmentShader:`varying vec2 vUv;uniform vec3 tint;uniform float strength;void main(){float y=vUv.y;float width=mix(.43,.10,y);float x=abs(vUv.x-.5);float edge=exp(-pow(x/width,2.)*3.2);float fade=smoothstep(0.,.30,y)*(1.-smoothstep(.84,1.,y));gl_FragColor=vec4(tint,edge*fade*strength);}`});
+const shaftMeshes=Array.from({length:6},()=>{const m=new T.Mesh(shaftGeometry,shaftMaterial);m.visible=false;shaftRoot.add(m);return m});
+let shaftAnchors=[],shaftTime=-100;
+const shaftUp=new T.Vector3(),shaftAcross=new T.Vector3(),shaftNormal=new T.Vector3(),shaftView=new T.Vector3(),shaftMatrix=new T.Matrix4();
+function updateShafts(t,dir,day,storm,bi){
+ const on=!insideInstance&&!coarse&&settings.quality==='high'&&day>.28&&storm<.68&&(bi===0||bi===1||bi===4);
+ shaftRoot.visible=on;if(!on)return;
+ if(t-shaftTime>.8){shaftTime=t;shaftAnchors=trees.filter(q=>q.g.visible&&q.r>.3&&Math.hypot(s.x-q.x,s.z-q.z)>7&&Math.hypot(s.x-q.x,s.z-q.z)<28).sort((a,b)=>Math.hypot(s.x-a.x,s.z-a.z)-Math.hypot(s.x-b.x,s.z-b.z)).slice(0,shaftMeshes.length)}
+ shaftUniforms.strength.value=(bi===1?.105:.067)*day*(1-storm)*(.55+.45*(1-dir.y));
+ shaftUniforms.tint.value.set(bi===1?0xd7e8a1:0xffe1a4);
+ shaftUp.copy(dir).normalize();
+ for(let i=0;i<shaftMeshes.length;i++){const m=shaftMeshes[i],a=shaftAnchors[i];m.visible=!!a&&a.g.visible;if(!m.visible)continue;
+ const len=7+(i%3)*1.7;m.position.set(a.x-dir.x*len*.28,height(a.x,a.z)+4.2-dir.y*len*.28,a.z-dir.z*len*.28);
+ shaftView.copy(camera.position).sub(m.position).normalize();shaftAcross.crossVectors(shaftUp,shaftView);
+ if(shaftAcross.lengthSq()<.001)shaftAcross.set(1,0,0);else shaftAcross.normalize();
+ shaftNormal.crossVectors(shaftAcross,shaftUp).normalize();shaftMatrix.makeBasis(shaftAcross,shaftUp,shaftNormal);m.quaternion.setFromRotationMatrix(shaftMatrix);m.scale.set(1.1+(i%3)*.45,len,1);
+ }
+}
 let character={...DEFAULT_CHARACTER},saveData=null,previewFace=false,previewSpin=true,previewYaw=.15,creatorPage=0;
 const defaultSettings={sensitivity:100,quality:coarse?'medium':'high',shadows:true,invertY:false,music:true,musicVolume:35};
 let settings={...defaultSettings};
@@ -140,7 +163,7 @@ function unlockMusic(){soundtrack.unlock()}
 window.addEventListener('pointerdown',unlockMusic,{passive:true});window.addEventListener('keydown',unlockMusic);document.addEventListener('visibilitychange',()=>{soundtrack.setHidden(document.hidden);if(!document.hidden)soundtrack.unlock()});
 function readProfile(){try{const v=JSON.parse(localStorage.getItem(PROFILE_KEY));if(v&&typeof v.name==='string')return cleanLook(v,DEFAULT_CHARACTER)}catch{}return null}
 function rememberProfile(ch){const profile=cleanLook(ch,DEFAULT_CHARACTER);try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile))}catch{}return profile}
-function applySettings(){const limit=settings.quality==='low'?.8:settings.quality==='medium'?1.15:1.6;renderer.setPixelRatio(Math.min(devicePixelRatio,limit));renderer.shadowMap.enabled=!insideInstance&&settings.shadows;scene.traverse(obj=>{if(obj.isMesh&&obj.material){for(const m of Array.isArray(obj.material)?obj.material:[obj.material])m.needsUpdate=true}});renderer.setSize(innerWidth,innerHeight)}
+function applySettings(){const limit=settings.quality==='low'?.8:settings.quality==='medium'?1.15:1.6;renderer.setPixelRatio(Math.min(devicePixelRatio,limit));renderer.shadowMap.enabled=!insideInstance&&settings.shadows;meadow.setQuality(settings.quality);scene.traverse(obj=>{if(obj.isMesh&&obj.material){for(const m of Array.isArray(obj.material)?obj.material:[obj.material])m.needsUpdate=true}});renderer.setSize(innerWidth,innerHeight)}
 function storeSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}catch{}}
 function renderSettings(){$('sensitivity').value=settings.sensitivity;$('sensitivity-value').textContent=settings.sensitivity+'%';$('graphics-quality').value=settings.quality;$('shadows').checked=settings.shadows;$('invert-y').checked=settings.invertY;$('music-enabled').checked=settings.music;$('music-volume').value=settings.musicVolume;$('music-volume-value').textContent=settings.musicVolume+'%'}
 let settingsReturn='home';
@@ -416,17 +439,17 @@ moveSpeed=Math.hypot(velocityX,velocityZ);
 camPitch+=(camPitchTarget-camPitch)*smoothFactor(9,dt);
 camDistance+=(camDistanceTarget-camDistance)*smoothFactor(7,dt);
 tick(s,dt,{running,warm:nearFire()||sheltered(),cold:!insideInstance&&biomeIndex(s.x,s.z)===3});attackCooldown=Math.max(0,attackCooldown-dt);attackTime=Math.max(0,attackTime-dt);wolfTick(dt);if(!insideInstance)updatePlanted(dt);refreshResources();pickupGround(dt);if(s.health<=0){death();return}actor.root.position.set(s.x,walkHeight(s.x,s.z)+jumpY,s.z);actor.root.rotation.y=s.yaw;walkPhase+=dt*(moveSpeed>4?12:8);actor.animate(walkPhase,moveSpeed,jumpY>0,attackTime>0?Math.sin((1-attackTime/.32)*Math.PI):0,s.elapsed,moveSpeed>.03?(-velocityX*Math.cos(s.yaw)+velocityZ*Math.sin(s.yaw))/moveSpeed:0,moveSpeed>.03?(velocityX*Math.sin(s.yaw)+velocityZ*Math.cos(s.yaw))/moveSpeed:1);if(!insideInstance)for(const r of resources){if(r.shake>0){r.shake=Math.max(0,r.shake-dt);r.g.rotation.z=Math.sin(r.shake*80)*r.shake*.32}else if(r.g.rotation.z)r.g.rotation.z=0}toastTime-=dt;if(toastTime<=0)$('toast').hidden=true;hudClock+=dt;if(hudClock>.25){hudClock=0;updateHud()}saveClock+=dt;if(saveClock>8){saveClock=0;save()}}
-const fogPalette=[0xb5c9c1,0x8da89b,0xd6b68e,0xc4d8e4,0x819b85],fogNight=new T.Color(0x182332),weatherGray=new T.Color(0x657b83),warmLight=new T.Color(0xffe4bf),sunsetLight=new T.Color(0xffa05b),coldLight=new T.Color(0xc1d6eb);
+const fogPalette=[0xb8cbb8,0x749a8b,0xd6b68e,0xc4d8e4,0x789781],fogNight=new T.Color(0x263d4b),weatherGray=new T.Color(0x657b83),warmLight=new T.Color(0xffe4bf),sunsetLight=new T.Color(0xffa05b),coldLight=new T.Color(0xc1d6eb);
 let visualWeather={storm:0,wind:.28,name:'Sereno'},lastWeatherLabel='';
 function lighting(t){
- environment.root.visible=!insideInstance;
+ environment.root.visible=!insideInstance;shaftRoot.visible=false;
  if(insideInstance){const a=insideInstance;a.update(s.x,s.z,t);scene.background.set(0x111713);const cold=a.site.id==='frostcave',marsh=a.site.id==='marshcrypt';scene.fog.color.set(cold?0x334d5b:marsh?0x243a29:0x302b24);scene.fog.density=.019;hemi.color.set(cold?0xb9dceb:0xf3d9b4);hemi.groundColor.set(0x3e4034);hemi.intensity=.95;sun.intensity=0;if(lastWeatherLabel!=='Al riparo'){$('weather').textContent='Al riparo';lastWeatherLabel='Al riparo'}return}
  world.update(s.x,s.z,t);details.update(s.x,s.z);const bi=biomeIndex(s.x,s.z),weather=weatherAt(s.time,bi);visualWeather.storm+=(weather.storm-visualWeather.storm)*.035;visualWeather.wind+=(weather.wind-visualWeather.wind)*.035;visualWeather.name=weather.name;const storm=visualWeather.storm;
  const hour=s.time/60%24,angle=(hour-6)/24*TAU,daylight=clamp((Math.sin(angle)+.10)*1.3,.08,1),gold=Math.max(0,1-Math.abs(Math.sin(angle))*2.3)*daylight,dir=V(Math.cos(angle)*-.9,Math.max(.12,Math.sin(angle)),.42).normalize(),alt=height(s.x,s.z);
- const sky=new T.Color(fogPalette[bi]).lerp(fogNight,1-daylight).lerp(weatherGray,storm*.40);scene.background.copy(sky);scene.fog.color.copy(sky);const fog=[.0068,.013,.007,.013,.019][bi]+storm*[.010,.014,.012,.020,.009][bi];scene.fog.density+=(fog-scene.fog.density)*.04;
+ const sky=new T.Color(fogPalette[bi]).lerp(fogNight,1-daylight).lerp(weatherGray,storm*.40);scene.background.copy(sky);scene.fog.color.copy(sky);const fog=[.0085,.017,.007,.013,.021][bi]+storm*[.010,.014,.012,.020,.009][bi];scene.fog.density+=(fog-scene.fog.density)*.04;
  worldSky.update(camera.position,daylight,dir,t,storm);visuals.setWind(t,visualWeather.wind);meadow.update(s.x,s.z,t);terrainLook.update(bi===3||bi===2?0:storm,daylight);waterMat.bumpMap.offset.set(t*.009*(1+storm),t*.005);waterAnimation(t);
- hemi.color.set(0xd4e8f2).lerp(coldLight,storm*.65);hemi.groundColor.set([0x67694a,0x3f5140,0x8f7451,0x61777e,0x40533d][bi]);hemi.intensity=.30+1.25*daylight*(1-storm*.19);
- sun.intensity=.075+3.1*daylight*(1-storm*.76);sun.color.copy(warmLight).lerp(sunsetLight,gold*.88).lerp(coldLight,storm*.64);sun.position.set(s.x+dir.x*58,alt+Math.max(13,dir.y*58),s.z+dir.z*58);sun.target.position.set(s.x,alt,s.z);
+ hemi.color.set(bi===1?0xb6e4dd:0xcfe5f0).lerp(fogNight,(1-daylight)*.28).lerp(coldLight,storm*.65);hemi.groundColor.set([0x5d6142,0x355643,0x8f7451,0x61777e,0x40533d][bi]);hemi.intensity=.42+1.08*daylight*(1-storm*.19);
+ sun.intensity=.09+3.5*daylight*(1-storm*.76);sun.color.copy(warmLight).lerp(sunsetLight,gold*.88).lerp(coldLight,storm*.64);sun.position.set(s.x+dir.x*58,alt+Math.max(13,dir.y*58),s.z+dir.z*58);sun.target.position.set(s.x,alt,s.z);updateShafts(t,dir,daylight,storm,bi);
  const sources=[];for(const f of fires){const v=1+.15*Math.sin(t*12+f.x);f.flame.scale.y=.68*v;f.inner.scale.y=.44*v;f.light.intensity=6.5+Math.sin(t*9+f.x)*1.5;if(Math.hypot(f.x-s.x,f.z-s.z)<19)sources.push({x:f.x,y:height(f.x,f.z)+.80,z:f.z})}
  for(const b of s.buildings)if(b.kind==='firebowl'&&Math.hypot(b.x-s.x,b.z-s.z)<19)sources.push({x:b.x,y:b.y+.8,z:b.z});
  const witchSite=world.sites.find(q=>q.kind==='witch');if(witchSite&&Math.hypot(s.x-witchSite.x,s.z-witchSite.z)<19)sources.push({x:witchSite.x-1.6*witchSite.scale,y:height(witchSite.x,witchSite.z)+witchSite.scale,z:witchSite.z+1.05*witchSite.scale,magic:true});environment.update({x:s.x,z:s.z,y:alt,t,day:daylight,bi,weather:visualWeather,pixelScale:renderer.domElement.height*.78,sources});if(lastWeatherLabel!==weather.name){$('weather').textContent=weather.name;lastWeatherLabel=weather.name}ripples.forEach((r,i)=>{r.scale.setScalar(1+i*.65+.3*Math.sin(t*.7+i));r.material.opacity=.016+.009*Math.sin(t+i)})
