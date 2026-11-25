@@ -1,6 +1,6 @@
 import {ITEMS,RECIPES,DEFAULT_CHARACTER,LIMIT,WEAPONS,HP,biomeWeights,biomeIndex,LOCAL_RESOURCES,LOCAL_FAUNA,NIGHT_MOBS,jumpStep,isFloor,isEdge,isCover,isStackWall,wallTop,upperWallDepends,TERRAIN_STEP,terrainDelta,editTerrain,PIECES,benchNear,planPiece,placePiece,removePiece,hitDamage,movement,assignSlot,selectSlot,fresh,clamp,add,has,take,craft,equip,eat,drink,tick,load} from './rules.js?v=16';
 import {createVisuals} from './visuals.js?v=14.1';
-import {createCharacter} from './character.js?v=10';
+import {createCharacter} from './character.js?v=16.5';
 import {createCombatAim} from './combat-aim.js?v=13';
 import {enclosed,entrance,makeInterior} from './interiors.js?v=14';
 import {terrainArt,weatherAt,createEnvironment} from './atmosphere.js?v=14.1';
@@ -10,26 +10,26 @@ const $=id=>document.getElementById(id),all=s=>[...document.querySelectorAll(s)]
 // Continuous steering with a stable heading, no camera-to-input feedback loop.
 const wrapAngle=a=>Math.atan2(Math.sin(a),Math.cos(a));
 const smoothFactor=(rate,dt)=>1-Math.exp(-rate*dt);
-function steerMovement(x,z,previous,heading,dt,running=false){
+function steerMovement(x,z,previous,heading,dt,running=false,facing=heading){
  const side=Math.abs(x)>.1?Math.sign(x):0,forward=Math.abs(z)>.1?Math.sign(z):0;
- const mode=side&&forward?'curve':side?'side':forward>0?'forward':'back';
- const active=!!(side||forward);
- if(!active)return null;
+ if(!side&&!forward)return null;
+ const mode=forward>0?(side?'curve':'forward'):(side?'strafe':'back');
  let target=previous?.heading??heading,turnRate=previous?.turnRate??0;
  if(mode==='curve'){
-  // Begin from the current heading; continue turning for as long as both keys are held.
-  if(forward<0&&previous?.mode!=='curve'&&previous?.mode!=='back')target+=Math.PI;
   const wanted=-side*(running?1.05:1.45)*Math.min(1,Math.abs(x));
-  turnRate+=(wanted-turnRate)*smoothFactor(9,dt);
-  target+=turnRate*dt;
+  turnRate+=(wanted-turnRate)*smoothFactor(9,dt);target+=turnRate*dt;
  }else{
   turnRate=0;
-  if(mode!==previous?.mode||side!==previous?.side){
-   if(mode==='side')target-=side*Math.PI/2;
-   else if(mode==='back')target+=Math.PI;
-  }
+  // No forward key: freeze the facing direction, never turn with lateral/back input.
+  if(mode==='strafe'||mode==='back')target=previous?.mode==='strafe'||previous?.mode==='back'?heading:facing;
  }
  return {mode,side,heading:wrapAngle(target),turnRate};
+}
+function locomotionVector(x,z,yaw,speed,steering){
+ if(!steering)return {x:0,z:0};
+ if(steering.mode==='curve'||steering.mode==='forward')return {x:Math.sin(yaw)*speed,z:Math.cos(yaw)*speed};
+ const len=Math.max(.001,Math.hypot(x,z)),side=x/len,back=Math.min(0,z)/len;
+ return {x:(-Math.cos(yaw)*side+Math.sin(yaw)*back)*speed,z:(Math.sin(yaw)*side+Math.cos(yaw)*back)*speed};
 }
 function approachAngle(current,target,rate,dt,maxRate=Infinity){
  const delta=wrapAngle(target-current),change=delta*smoothFactor(rate,dt);
@@ -331,9 +331,17 @@ function step(dt){if(insideInstance){insideInstance.visited.add(Math.round(s.x/7
 const len=Math.hypot(x,z),active=len>.1,running=active&&(keys.has('Shift')||runTouch)&&s.stamina>4;
 let speed=active?(running?6.8:3.6)*Math.min(1,len):0;
 if(!insideInstance&&waterDist(s.x,s.z)<18)speed*=.65;
-if(active){steering=steerMovement(x,z,steering,camHeadingTarget,dt,running);if(steering)camHeadingTarget=steering.heading}else steering=null;
-const bodyMotion=smoothBodyTurn(s.yaw,camHeadingTarget,bodyTurnVelocity,dt,running);s.yaw=bodyMotion.yaw;bodyTurnVelocity=bodyMotion.omega;
-const wantedX=active?Math.sin(s.yaw)*speed:0,wantedZ=active?Math.cos(s.yaw)*speed:0;
+if(active){
+ steering=steerMovement(x,z,steering,camHeadingTarget,dt,running,s.yaw);
+ if(steering)camHeadingTarget=steering.heading;
+}else steering=null;
+const lateral=steering?.mode==='strafe'||steering?.mode==='back';
+if(lateral){s.yaw=camHeadingTarget;bodyTurnVelocity=0}
+else{const bodyMotion=smoothBodyTurn(s.yaw,camHeadingTarget,bodyTurnVelocity,dt,running);s.yaw=bodyMotion.yaw;bodyTurnVelocity=bodyMotion.omega}
+const wanted=locomotionVector(x,z,s.yaw,speed,steering),wantedX=wanted.x,wantedZ=wanted.z;
+// Remove residual forward momentum when entering a pure sideways step.
+if(lateral&&Math.abs(z)<=.1){const longitudinal=velocityX*Math.sin(s.yaw)+velocityZ*Math.cos(s.yaw);velocityX-=longitudinal*Math.sin(s.yaw);velocityZ-=longitudinal*Math.cos(s.yaw)}
+
 const accel=smoothFactor(active?10:16,dt);velocityX+=(wantedX-velocityX)*accel;velocityZ+=(wantedZ-velocityZ)*accel;
 if(!active&&Math.hypot(velocityX,velocityZ)<.025)velocityX=velocityZ=0;
 const allowed=(nx,nz)=>!blockedByBuild(nx,nz)&&(insideInstance||!trees.some(t=>t.g.visible&&Math.hypot(nx-t.x,nz-t.z)<t.r+.25)&&!resources.some(r=>r.solid&&r.g.visible&&Math.hypot(nx-r.x,nz-r.z)<r.solid+.22));
@@ -343,7 +351,7 @@ moveSpeed=Math.hypot(velocityX,velocityZ);
 camYaw=approachAngle(camYaw,s.yaw,5.8,dt,3.1);
 camPitch+=(camPitchTarget-camPitch)*smoothFactor(9,dt);
 camDistance+=(camDistanceTarget-camDistance)*smoothFactor(7,dt);
-tick(s,dt,{running,warm:nearFire()||sheltered(),cold:!insideInstance&&biomeIndex(s.x,s.z)===3});attackCooldown=Math.max(0,attackCooldown-dt);attackTime=Math.max(0,attackTime-dt);wolfTick(dt);refreshResources();if(s.health<=0){death();return}actor.root.position.set(s.x,walkHeight(s.x,s.z)+jumpY,s.z);actor.root.rotation.y=s.yaw;walkPhase+=dt*(moveSpeed>4?12:8);actor.animate(walkPhase,moveSpeed,jumpY>0,attackTime>0?Math.sin((1-attackTime/.32)*Math.PI):0,s.elapsed);for(const r of resources){if(r.shake>0){r.shake=Math.max(0,r.shake-dt);r.g.rotation.z=Math.sin(r.shake*80)*r.shake*.32}else if(r.g.rotation.z)r.g.rotation.z=0}toastTime-=dt;if(toastTime<=0)$('toast').hidden=true;hudClock+=dt;if(hudClock>.25){hudClock=0;updateHud()}saveClock+=dt;if(saveClock>8){saveClock=0;save()}}
+tick(s,dt,{running,warm:nearFire()||sheltered(),cold:!insideInstance&&biomeIndex(s.x,s.z)===3});attackCooldown=Math.max(0,attackCooldown-dt);attackTime=Math.max(0,attackTime-dt);wolfTick(dt);refreshResources();if(s.health<=0){death();return}actor.root.position.set(s.x,walkHeight(s.x,s.z)+jumpY,s.z);actor.root.rotation.y=s.yaw;walkPhase+=dt*(moveSpeed>4?12:8);actor.animate(walkPhase,moveSpeed,jumpY>0,attackTime>0?Math.sin((1-attackTime/.32)*Math.PI):0,s.elapsed,moveSpeed>.03?(-velocityX*Math.cos(s.yaw)+velocityZ*Math.sin(s.yaw))/moveSpeed:0,moveSpeed>.03?(velocityX*Math.sin(s.yaw)+velocityZ*Math.cos(s.yaw))/moveSpeed:1);for(const r of resources){if(r.shake>0){r.shake=Math.max(0,r.shake-dt);r.g.rotation.z=Math.sin(r.shake*80)*r.shake*.32}else if(r.g.rotation.z)r.g.rotation.z=0}toastTime-=dt;if(toastTime<=0)$('toast').hidden=true;hudClock+=dt;if(hudClock>.25){hudClock=0;updateHud()}saveClock+=dt;if(saveClock>8){saveClock=0;save()}}
 const fogPalette=[0xb5c9c1,0x8da89b,0xd6b68e,0xc4d8e4,0x819b85],fogNight=new T.Color(0x182332),weatherGray=new T.Color(0x657b83),warmLight=new T.Color(0xffe4bf),sunsetLight=new T.Color(0xffa05b),coldLight=new T.Color(0xc1d6eb);
 let visualWeather={storm:0,wind:.28,name:'Sereno'},lastWeatherLabel='';
 function lighting(t){
