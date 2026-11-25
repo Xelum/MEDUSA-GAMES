@@ -1,5 +1,5 @@
 import {ITEMS,RECIPES,DEFAULT_CHARACTER,LIMIT,WEAPONS,HP,biomeWeights,biomeIndex,LOCAL_RESOURCES,LOCAL_FAUNA,NIGHT_MOBS,jumpStep,isFloor,isEdge,isCover,TERRAIN_STEP,terrainDelta,editTerrain,PIECES,benchNear,planPiece,placePiece,removePiece,hitDamage,movement,assignSlot,selectSlot,fresh,clamp,add,has,take,craft,equip,eat,drink,tick,load} from './rules.js?v=12';
-import {createVisuals} from './visuals.js?v=14';
+import {createVisuals} from './visuals.js?v=14.1';
 import {createCharacter} from './character.js?v=10';
 import {createCombatAim} from './combat-aim.js?v=13';
 import {enclosed,entrance,makeInterior} from './interiors.js?v=14';
@@ -17,10 +17,12 @@ const coarse=matchMedia('(pointer: coarse)').matches;renderer.setPixelRatio(Math
 const hemi=new T.HemisphereLight(0xd8e9f7,0x55513a,2.0),sun=new T.DirectionalLight(0xffe2ad,2.6);scene.add(hemi,sun,sun.target);sun.castShadow=true;sun.shadow.mapSize.set(coarse?1024:2048,coarse?1024:2048);Object.assign(sun.shadow.camera,{left:-36,right:36,top:36,bottom:-36,near:1,far:125});sun.shadow.bias=-.00025;sun.shadow.normalBias=.035;sun.shadow.radius=2;
 const V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
 const matCache=new Map();function mat(color){if(!matCache.has(color)){const r=(color>>16)&255,g=(color>>8)&255,b=color&255,kind=r>g*1.12&&g>b*1.12?'bark':Math.abs(r-g)<24&&Math.abs(g-b)<22?'stone':'earth';matCache.set(color,visuals.material(color,kind,{flatShading:false}))}return matCache.get(color)}
-const boxGeo=new T.BoxGeometry(1,1,1),sphereGeo=new T.IcosahedronGeometry(1,2),cylGeo=new T.CylinderGeometry(.8,1,1,12),coneGeo=new T.ConeGeometry(1,1,11);
+const boxGeo=new T.BoxGeometry(1,1,1),sphereGeo=new T.IcosahedronGeometry(1,2),rockGeo=new T.IcosahedronGeometry(1,2),cylGeo=new T.CylinderGeometry(.8,1,1,12),coneGeo=new T.ConeGeometry(1,1,11);
+{const a=rockGeo.attributes.position;for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),z=a.getZ(i),f=1+.13*Math.sin(x*7+y*4+z*6)+.075*Math.cos(x*15-y*9+z*3);a.setXYZ(i,x*f,y*f,z*f)}rockGeo.computeVertexNormals()}
 function mesh(parent,geo,color,x,y,z,sx=1,sy=1,sz=1,shadow=true){const m=new T.Mesh(geo,mat(color));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=shadow;m.receiveShadow=true;parent.add(m);return m}
 const box=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,boxGeo,c,x,y,z,sx,sy,sz,sh);
 const orb=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,sphereGeo,c,x,y,z,sx,sy,sz,sh);
+const mineral=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,rockGeo,c,x,y,z,sx,sy,sz,sh);
 const cyl=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,cylGeo,c,x,y,z,sx,sy,sz,sh);
 const cone=(p,c,x,y,z,sx,sy,sz,sh=true)=>mesh(p,coneGeo,c,x,y,z,sx,sy,sz,sh);
 function group(p,x=0,y=0,z=0){const g=new T.Group();g.position.set(x,y,z);p.add(g);return g}
@@ -43,10 +45,10 @@ const resources=[],trees=[],fires=[],wolves=[],loot=[],fallen=[],combatObstacles
 function place(kind,x,z,index){
  const y=height(x,z),g=group(scene,x,y,z),id=kind+'-'+index,bio=biomeAt(x,z),bi=biomeIndex(x,z);
  if(kind==='wood'||kind==='oak'){visuals.tree(g,bi,bio,kind,index+1);g.scale.setScalar(rand(.82,1.28));trees.push({x,z,r:.5,g})}
- if(kind==='stone'){orb(g,bio.rock,0,.38,0,.65,.48,.55);orb(g,0x6a746d,.48,.18,.2,.33,.24,.3)}
+ if(kind==='stone'){mineral(g,bio.rock,0,.38,0,.65,.48,.55);mineral(g,0x6a746d,.48,.18,.2,.33,.24,.3)}
  if(kind==='fiber'){for(let i=0;i<6;i++){const a=i*TAU/6,m=cone(g,i%2?0x9cae5e:0x66883f,Math.sin(a)*.25,.33,Math.cos(a)*.25,.12,.85,.12,false);m.rotation.z=Math.sin(a)*.45;m.rotation.x=Math.cos(a)*.45}}
  if(kind==='berries'){for(let i=0;i<3;i++)orb(g,0x456d40,(i-1)*.42,.45,0,.62,.49,.5);for(let i=0;i<9;i++)orb(g,0x9d3939,Math.sin(i*2.3)*.66,.5+(i%3)*.18,Math.cos(i*2.3)*.45,.085,.085,.085,false)}
- if(['flint','copper','clay'].includes(kind)){const col={flint:0x4f5e60,copper:0x527e70,clay:0xa46f50}[kind];orb(g,col,0,.30,0,.61,.36,.52);orb(g,col,.38,.15,-.24,.27,.22,.3);if(kind==='copper')for(let i=0;i<4;i++)orb(g,0xbd8652,Math.sin(i*2)*.37,.4,Math.cos(i*2)*.31,.12,.10,.13)}
+ if(['flint','copper','clay'].includes(kind)){const col={flint:0x4f5e60,copper:0x527e70,clay:0xa46f50}[kind];mineral(g,col,0,.30,0,.61,.36,.52);mineral(g,col,.38,.15,-.24,.27,.22,.3);if(kind==='copper')for(let i=0;i<4;i++)orb(g,0xbd8652,Math.sin(i*2)*.37,.4,Math.cos(i*2)*.31,.12,.10,.13)}
  if(kind==='cactus'){cyl(g,0x69944f,0,.72,0,.22,1.44,.22);for(const side of [-1,1]){box(g,0x719b55,side*.27,.65,0,.45,.13,.16);cyl(g,0x719b55,side*.45,.9,0,.11,.55,.11);orb(g,0xd18b42,side*.45,1.22,0,.11,.13,.11)}}
  if(kind==='reed'){for(let i=0;i<7;i++){const xx=(i%3-1)*.17,zz=(i%4-1.5)*.12;cyl(g,0x879658,xx,.5,zz,.025,1,.025,false);orb(g,0x695237,xx,.99,zz,.06,.14,.06,false)}}
  if(kind==='icecrystal'||kind==='amber'){for(let i=0;i<4;i++){const a=i*TAU/4;const m=cone(g,kind==='icecrystal'?0x9fdcea:0xdca14c,Math.sin(a)*.22,.48,Math.cos(a)*.22,.18,.95,.18);m.rotation.z=Math.sin(a)*.25}}
