@@ -40,6 +40,44 @@ export function buildWorld(T,scene,visuals,height,coarse){
   }else if(s.kind==='witch'||s.kind==='hut'){hut(s,s.kind==='witch');s.inside={w:2.5,d:3};if(s.kind==='hut')s.loot={x:s.x+.8,z:s.z-1.8};
   }else if(s.kind==='tower'){for(let i=0;i<3;i++){stoneWall(s,-2.7,0,.7,5.5,3+i*.03);break}stoneWall(s,2.7,0,.7,5.5,3.8);stoneWall(s,0,-2.7,5.7,.7,4.1);for(let i=0;i<5;i++){B(s.g,0x89897d,2.7,4+i*.48,-1.7,.72,.44,2.2,'stone')}for(let i=0;i<5;i++)R(s.g,0x7a7b6c,-3.2+i*1.2,.35,3.4,.48,.35,.4);s.loot={x:s.x,z:s.z-1.4};
   }else{for(const x of [-2.1,2.1]){B(s.g,0x856342,x,.65,0,2.5,.3,3);for(const side of [-1,1]){const wheel=C(s.g,0x53432f,x+side*1.35,.54,0,.63,.14,.63);wheel.rotation.z=Math.PI/2}for(let i=0;i<4;i++)B(s.g,0x9c7650,x,.95,(i-1.5)*.66,2.35,.3,.58)}for(let i=0;i<5;i++)R(s.g,0xafa18a,-2+i,.17,3.2,.22,.14,.3);s.loot={x:s.x,z:s.z-2.4}}
+  // A grounded, distinct front entrance, with a physical door and luminous frame.
+  if(s.kind!=='caravan'){
+   const stone=s.kind==='crypt'||s.kind==='cave'||s.kind==='tower',cave=s.kind==='cave';
+   const front=s.kind==='crypt'?8.98:cave?8.65:s.kind==='tower'?3.65:3.55;
+   s.entryZ=front;s.portalZ=front+.9;
+   const wood=0x67462d,trim=stone?0x8d8879:0x513b2a,wallCol=stone?0x696b60:0x8c6845;
+   const fy=(height(s.x,s.z+front*s.scale)-s.g.position.y)/s.scale;
+   // Foundations descend beneath the existing terrain, rather than hovering above it.
+   const wide=s.kind==='crypt'?12.2:cave?12:s.kind==='tower'?6.1:6.1;
+   B(s.g,0x5b5c50,0,-.38,0,wide,.92,(front+.2)*2,'stone');
+   B(s.g,0x777566,0,fy-.13,front+.48,3.3,.26,1.5,'stone');
+   for(const side of [-1,1]){
+    B(s.g,trim,side*1.23,fy+1.47,front,.38,2.95,.68,stone?'stone':'bark');
+    B(s.g,0x57594e,side*1.23,fy+.16,front,.65,.32,.83,'stone');
+    B(s.g,trim,side*1.23,fy+2.78,front,.63,.29,.80,stone?'stone':'bark');
+    if(stone){for(let j=0;j<4;j++)B(s.g,0x858377,side*1.74,fy+.31+j*.62,front-.1,.58,.55,.72,'stone')}
+    const lantern=B(s.g,0x493a29,side*1.42,fy+2.14,front+.40,.29,.45,.29,'bark');
+    const glass=B(s.g,0xe7c17b,side*1.42,fy+2.15,front+.57,.20,.28,.12,'earth');glass.material=new T.MeshBasicMaterial({color:0xffd38a});
+   }
+   B(s.g,trim,0,fy+2.94,front,2.95,.43,.78,stone?'stone':'bark');
+   for(let j=0;j<7;j++)B(s.g,[0x65452e,0x765139,0x845c3b][j%3],(j-3)*.286,fy+1.30,front+.10,.279,2.60,.20,'bark');
+   for(const y of [.4,2.13])B(s.g,0x403b31,0,fy+y,front+.24,2.07,.17,.14,'stone');
+   C(s.g,0xc8a268,.65,fy+1.25,front+.30,.10,.12,.10,'stone');
+   // Emissive accents read clearly without the expense of a large number of lights.
+   for(const side of [-1,1]){const glow=B(s.g,0xe7c17b,side*1.02,fy+1.30,front+.23,.045,2.52,.055,'earth');glow.material=new T.MeshBasicMaterial({color:0xffd993})}
+   torch(s,0,fy+3.45,front+.12,0xffca80);
+   if(!stone){
+    for(const side of [-1,1]){for(let j=0;j<3;j++)B(s.g,0x8d6c47,side*(1.6+j*.40),1.65,front-.10,.35,2.6,.17,'bark');B(s.g,0x302c22,side*2.12,1.83,front+.04,.67,.72,.14,'bark');for(const y of [1.44,2.22])B(s.g,trim,side*2.12,y,front+.15,.92,.13,.20,'bark');B(s.g,trim,side*2.12,1.83,front+.15,.10,.78,.18,'bark')}
+    for(let j=0;j<6;j++)B(s.g,[0x856441,0x6e5035][j%2],0,3.13+j*.22,front-.36,Math.max(.35,5.4-j*.84),.23,.24,'bark');
+    B(s.g,0x5d4933,0,4.74,0,.30,.24,7.75,'bark');
+   }else if(cave){
+    for(let j=0;j<9;j++){const a=j*Math.PI/8;const v=R(s.g,wallCol,Math.cos(a)*3.15,fy+1.3+Math.sin(a)*2.25,front-.8,1.25,1.45,1.12);v.rotation.z=a*.45}
+    for(const side of [-1,1])for(let j=0;j<3;j++){const v=C(s.g,0x594831,side*(2.7+j*.58),fy+1.1+j*.51,front-1,.20,2.7,.20);v.rotation.z=side*.55}
+   }else{
+    for(const side of [-1,1]){stoneWall(s,side*(wide/2-.32),front-1.1,.85,2.7,4.6);B(s.g,0x939080,side*(wide/2-.32),4.65,front-1.1,1.12,.38,3.0,'stone')}
+    B(s.g,0x929082,0,4.55,front-.5,wide,.40,1.25,'stone');for(let j=0;j<Math.floor(wide/1.3);j++)B(s.g,0x77766b,-wide/2+.7+j*1.3,4.95,front-.5,.68,.52,.84,'stone');
+   }
+  }else for(const x of [-2.1,2.1])walls.push({site:s,x:s.x+x,z:s.z,w:2.9,d:3.1});
   // Scale the architecture and its collision/interaction coordinates together.
   const k=s.scale;s.g.scale.set(k,k,k);
   for(const v of walls.filter(v=>v.site===s)){v.x=s.x+(v.x-s.x)*k;v.z=s.z+(v.z-s.z)*k;v.w*=k;v.d*=k}
@@ -50,7 +88,7 @@ export function buildWorld(T,scene,visuals,height,coarse){
  }
  function blocked(x,z){return walls.some(w=>w.site.g.visible&&Math.abs(x-w.x)<w.w/2+.24&&Math.abs(z-w.z)<w.d/2+.24)}
  function inside(x,z){return sites.find(s=>s.g.visible&&s.inside&&Math.abs(x-s.x)<s.inside.w&&Math.abs(z-s.z)<s.inside.d)}
- function update(x,z,t){for(const s of sites)s.g.visible=Math.hypot(x-s.x,z-s.z)<145;for(const v of lights){v.l.visible=v.site.g.visible&&Math.hypot(x-v.site.x,z-v.site.z)<20;v.l.intensity=10+2*Math.sin(t*9+v.phase);v.f.scale.y=.48*(1+.12*Math.sin(t*8+v.phase))}}
+ function update(x,z,t){for(const s of sites)s.g.visible=Math.hypot(x-s.x,z-s.z)<145;for(const v of lights){v.l.visible=v.site.g.visible&&Math.hypot(x-v.site.x,z-v.site.z)<20;v.l.intensity=14+2*Math.sin(t*9+v.phase);v.f.scale.y=.48*(1+.12*Math.sin(t*8+v.phase))}}
  function reheight(){for(const s of sites)s.g.position.y=height(s.x,s.z)}
  return {sites,obstacles,blocked,inside,update,reheight};
 }
