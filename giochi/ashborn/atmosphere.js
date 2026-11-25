@@ -44,21 +44,49 @@ export function createEnvironment(T,scene,height,coarse){
  function spriteTexture(kind){const p=new Uint8Array(n*n*4);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const u=(x+.5-n/2)/(n/2),v=(y+.5-n/2)/(n/2),r=Math.hypot(u,v);let alpha=Math.pow(Math.max(0,1-r*r),kind==='mist'?2.5:kind==='glow'?4:1.6);if(kind==='leaf')alpha=Math.pow(Math.max(0,1-u*u*3-v*v),.65)*(.55+.45*Math.cos(u*6));if(kind==='smoke')alpha*=.55+.45*noise(x*.16,y*.16);if(kind==='flake')alpha=Math.max(alpha*.34,Math.exp(-Math.abs(u)*32)*Math.max(0,1-Math.abs(v))*Math.exp(-r*r*2),Math.exp(-Math.abs(v)*32)*Math.max(0,1-Math.abs(u))*Math.exp(-r*r*2));const i=(y*n+x)*4;p[i]=p[i+1]=p[i+2]=255;p[i+3]=Math.round(clamp(alpha)*255)}const t=new T.DataTexture(p,n,n,T.RGBAFormat);t.needsUpdate=true;return t}
  const textures=Object.fromEntries(['mist','glow','leaf','smoke','flake'].map(k=>[k,spriteTexture(k)]));
  function layer(max,kind,size,color,opacity,add=false){const data=new Float32Array(max*3),colors=new Float32Array(max*3).fill(1),g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(data,3));g.setAttribute('color',new T.BufferAttribute(colors,3));g.setDrawRange(0,0);const m=new T.PointsMaterial({map:textures[kind],color,size,opacity,transparent:true,vertexColors:true,depthWrite:false,blending:add?T.AdditiveBlending:T.NormalBlending});const o=new T.Points(g,m);o.frustumCulled=false;root.add(o);return{data,colors,g,m,o,max}}
- const motes=layer(coarse?48:105,'glow',.10,0xf0d6a2,.58,true),leaves=layer(coarse?14:35,'leaf',.20,0xb0a45a,.64),mist=layer(coarse?12:30,'mist',9,0xb3c5bb,.11),snow=layer(coarse?65:155,'flake',.17,0xf1f5f4,.78),smoke=layer(coarse?50:120,'smoke',.72,0xb1b0a5,.35),sparks=layer(coarse?35:80,'glow',.105,0xffb56d,.9,true),dust=layer(coarse?40:100,'mist',.52,0xd3af7c,.24);
+ const motes=layer(coarse?110:240,'glow',.10,0xf0d6a2,.58,true),leaves=layer(coarse?14:35,'leaf',.20,0xb0a45a,.64),mist=layer(coarse?12:30,'mist',9,0xb3c5bb,.11),snow=layer(coarse?65:155,'flake',.17,0xf1f5f4,.78),smoke=layer(coarse?50:120,'smoke',.72,0xb1b0a5,.35),sparks=layer(coarse?35:80,'glow',.105,0xffb56d,.9,true),dust=layer(coarse?40:100,'mist',.52,0xd3af7c,.24);
  const magic=layer(coarse?18:38,'glow',.18,0xa7f18e,.78,true),halos=layer(8,'glow',1.45,0xffb674,.26,true),splashes=layer(coarse?24:64,'glow',.115,0xc4d6d8,.40);const rainMax=coarse?110:310,rainData=new Float32Array(rainMax*6),rg=new T.BufferGeometry();rg.setAttribute('position',new T.BufferAttribute(rainData,3));rg.setDrawRange(0,0);const rm=new T.LineBasicMaterial({color:0xb6cad5,transparent:true,opacity:.26,depthWrite:false}),rain=new T.LineSegments(rg,rm);rain.frustumCulled=false;root.add(rain);
+ // One batched draw call for luminous spores: a warm core and a soft, additive aureole.
+ const moteSizes=new Float32Array(motes.max),moteAlpha=new Float32Array(motes.max);
+ motes.g.setAttribute('moteSize',new T.BufferAttribute(moteSizes,1));
+ motes.g.setAttribute('moteAlpha',new T.BufferAttribute(moteAlpha,1));
+ const oldMoteMaterial=motes.m;
+ motes.m=new T.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,toneMapped:false,
+ uniforms:{pixelScale:{value:500},tint:{value:new T.Color(0xffdca4)}},
+ vertexShader:`attribute float moteSize;attribute float moteAlpha;varying float vAlpha;uniform float pixelScale;
+ void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(moteSize*pixelScale/max(1.,-mv.z),2.,42.);vAlpha=moteAlpha;}`,
+ fragmentShader:`uniform vec3 tint;varying float vAlpha;void main(){float r=length(gl_PointCoord-.5)*2.;if(r>1.)discard;float edge=1.-smoothstep(.68,1.,r);float halo=exp(-r*r*4.4)*.27;float core=exp(-r*r*40.);float a=(halo+core*.92)*edge*vAlpha;vec3 light=mix(tint,vec3(1.,.98,.89),core*.72);gl_FragColor=vec4(light,a);}`});
+ motes.o.material=motes.m;oldMoteMaterial.dispose();
  function put(l,i,x,y,z,brightness=1){l.data[i*3]=x;l.data[i*3+1]=y;l.data[i*3+2]=z;l.colors[i*3]=l.colors[i*3+1]=l.colors[i*3+2]=brightness}
  function finish(l,k){l.o.visible=k>0;l.g.setDrawRange(0,k);l.g.attributes.position.needsUpdate=l.g.attributes.color.needsUpdate=true}
  let cx=Infinity,cz=Infinity,cache=new Map();
  function ground(x,z){const a=Math.round(x/3),b=Math.round(z/3),k=a+','+b;if(!cache.has(k))cache.set(k,height(a*3,b*3));return cache.get(k)}
  function invalidate(){cache.clear();cx=cz=Infinity}
- function update({x,z,y,t,day,bi,weather,indoors=false,sources=[]}){
+ function update({x,z,y,t,day,bi,weather,indoors=false,sources=[],blocked=null,pixelScale=500}){
   if(Math.floor(x/12)!==cx||Math.floor(z/12)!==cz){cx=Math.floor(x/12);cz=Math.floor(z/12);cache.clear()}
   const storm=weather.storm,wind=weather.wind,night=1-day;
   const point=(i,speed,radius)=>{const a=i*2.399963+t*speed,r=radius*(.2+.8*hash(i,41));return[x+Math.cos(a)*r,z+Math.sin(a)*r]};
-  let k=0;const mc=indoors?Math.floor(motes.max*.38):bi===2?0:bi===3?Math.floor(motes.max*.16):Math.floor(motes.max*(day<.68?.66:.32));motes.m.color.set(indoors?0xc6b99a:day<.68?0xc6df83:0xead5a0);motes.m.size=indoors?.065:day<.68?.13:.065;motes.m.opacity=indoors?.32:day<.68?.65:.30;
-  for(let i=0;i<mc;i++){const [xx,zz]=point(i,.036,indoors?5:24),yy=indoors?.25+hash(i,22)*3:ground(xx,zz)+.4+hash(i,22)*2.7;put(motes,k++,xx,yy+.22*Math.sin(t*1.7+i),zz,.45+.55*(.5+.5*Math.sin(t*2.2+i*3)))}finish(motes,k);
+  let k=0;
+  const palette=[0xffe1a3,0xcdeaa0,0xffc582,0xa7e0ff,0xa6efad];
+  motes.m.uniforms.tint.value.set(palette[bi]||palette[0]);motes.m.uniforms.pixelScale.value=pixelScale;
+  const radius=indoors?12:25,cell=indoors?6:12,range=Math.ceil(radius/cell),density=indoors?5:coarse?5:9;
+  const nightGlow=.68+.32*night,baseX=Math.floor(x/cell),baseZ=Math.floor(z/cell);
+  for(let dz=-range;dz<=range;dz++)for(let dx=-range;dx<=range;dx++){
+   const gx=baseX+dx,gz=baseZ+dz;
+   for(let i=0;i<density&&k<motes.max;i++){
+    const seed=gx*97+gz*193+i*17,phase=hash(seed,43)*6.2831853;
+    const xx=(gx+hash(seed,71))*cell+Math.sin(t*.19+phase)*.75;
+    const zz=(gz+hash(seed,83))*cell+Math.cos(t*.15+phase)*.65;
+    const d=Math.hypot(xx-x,zz-z);if(d>radius||indoors&&blocked&&blocked(xx,zz))continue;
+    if(bi===2&&hash(seed,2)>.22)continue;
+    const yy=(indoors?0:ground(xx,zz))+.35+hash(seed,22)*(indoors?4.4:4.1)+.24*Math.sin(t*.85+phase);
+    const fade=1-smooth((d-radius*.68)/(radius*.32)),pulse=.42+.58*(.5+.5*Math.sin(t*(.75+hash(seed,6)*.8)+phase));
+    put(motes,k,xx,yy,zz);moteSizes[k]=.22+hash(seed,12)*.32;moteAlpha[k]=fade*pulse*nightGlow*(1-storm*.45)*(bi===2?.48:1);k++;
+   }
+  }
+  finish(motes,k);motes.g.attributes.moteSize.needsUpdate=motes.g.attributes.moteAlpha.needsUpdate=true;
   k=0;if(!indoors&&(bi===0||bi===1||bi===4)){leaves.m.color.set(bi===1?0x9a9a55:0xb8aa67);for(let i=0;i<leaves.max*(bi===1?1:.38);i++){const [xx,zz]=point(i,.024+wind*.065,19),yy=ground(xx,zz)+.25+fract(hash(i,8)-t*(.04+wind*.018))*4;put(leaves,k++,xx+.25*Math.sin(t+i),yy,zz, .6+.35*hash(i,4))}}finish(leaves,k);
-  k=0;if(!indoors){mist.m.opacity=[.026,.067,.037,.085,.105][bi]*(.7+.6*night+.5*storm);mist.m.color.set([0xc3d1c4,0xa3b8ab,0xe2c8a0,0xd8e3eb,0x92b09c][bi]);mist.m.size=bi===4?9:7;for(let i=0;i<mist.max;i++){const [xx,zz]=point(i,.008+wind*.006,33);put(mist,k++,xx,ground(xx,zz)+.7+hash(i,17)*.6,zz,.55+.4*hash(i,55))}}finish(mist,k);
+  k=0;if(!indoors){mist.m.opacity=[.032,.077,.040,.091,.110][bi]*(.7+.6*night+.5*storm);mist.m.color.set([0xc3d1c4,0xa3b8ab,0xe2c8a0,0xd8e3eb,0x92b09c][bi]);mist.m.size=bi===4?9:7;for(let i=0;i<mist.max;i++){const [xx,zz]=point(i,.008+wind*.006,33);put(mist,k++,xx,ground(xx,zz)+.7+hash(i,17)*.6,zz,.55+.4*hash(i,55))}}finish(mist,k);
   k=0;if(!indoors&&bi===3){for(let i=0;i<snow.max*(.18+storm*.80);i++){const xx=x+(fract(hash(i,17)+t*.014*wind)-.5)*33,zz=z+(hash(i,21)-.5)*33,yy=ground(xx,zz)+fract(hash(i,93)-t*.063)*10;put(snow,k++,xx,yy,zz,.45+.55*hash(i,4))}}finish(snow,k);
   k=0;if(!indoors&&bi===2&&storm>.12){dust.m.opacity=.14+storm*.11;for(let i=0;i<dust.max*storm;i++){const xx=x+(fract(hash(i,14)+t*.045*wind)-.5)*36,zz=z+(hash(i,28)-.5)*28;put(dust,k++,xx,ground(xx,zz)+.18+hash(i,5)*1.7,zz,.6+.4*hash(i,31))}}finish(dust,k);
   let rc=0;if(!indoors&&bi!==2&&bi!==3&&storm>.35){rc=Math.floor(rainMax*storm);rm.opacity=.12+storm*.18;for(let i=0;i<rc;i++){const xx=x+(fract(hash(i,15)+t*.02*wind)-.5)*27,zz=z+(hash(i,23)-.5)*27,yy=ground(xx,zz)+fract(hash(i,94)-t*.82)*10,j=i*6;rainData[j]=xx;rainData[j+1]=yy;rainData[j+2]=zz;rainData[j+3]=xx-wind*.23;rainData[j+4]=yy+.40+storm*.24;rainData[j+5]=zz+.06}}rain.visible=rc>0;rg.setDrawRange(0,rc*2);rg.attributes.position.needsUpdate=true;
