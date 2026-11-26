@@ -18,3 +18,19 @@ export function findSafeExit(origin,{clear,height,dry=()=>true,limit=480,forward
  for(const r of [.8,1.5,2.4,3.5,5,7,10,14,20,26,32]){if(r>maxRadius)break;const steps=Math.max(12,Math.ceil(r*3));for(let i=0;i<steps;i++){const a=forward+((i%2?1:-1)*Math.ceil(i/2))*Math.PI*2/steps,x=origin.x+Math.sin(a)*r,z=origin.z+Math.cos(a)*r;if(comfortable(x,z)&&escape(x,z))return{x,z}}}
  return null;
 }
+
+// Preserve cadence across slightly late RAF callbacks. On native <= target refresh,
+// render each callback instead of dropping a frame because of timer jitter.
+export function createFramePacer(){
+ let previous=null,deadline=null,cap=0,native=1000/60;
+ return {reset(){previous=deadline=null;cap=0;native=1000/60},due(now,target){
+  const interval=1000/target,delta=previous===null?interval:now-previous;previous=now;
+  if(delta>1&&delta<100)native+=(delta-native)*.12;
+  if(target!==cap||deadline===null||delta>250){cap=target;deadline=now+interval;return true}
+  if(native>=interval*.91){deadline=now+interval;return true}
+  if(now+Math.min(1.5,native*.16)<deadline)return false;
+  deadline+=interval;
+  if(deadline<now-interval)deadline=now+interval;
+  return true;
+ }};
+}
