@@ -24,7 +24,7 @@ export function terrainArt(T,mat,coarse){
  float ashMoss=clamp(vAshRegions.y+vAshMarsh,0.,1.);
  float ashRock=smoothstep(.12,.43,1.-vAshSlope+ashMacro.r*.16);
  float ashSoil=smoothstep(.52,.73,ashMacro.r+ashMicro.r*.13)*(1.-ashDesert)*(1.-ashSnow)*(1.-ashRock);
- float ashPath=smoothstep(.68,.83,ashMacro.a)*smoothstep(.42,.62,ashMacro.r)*.36;
+ float ashPath=smoothstep(.64,.82,ashMacro.a)*smoothstep(.40,.65,ashMacro.r)*.50; float clearing=smoothstep(.63,.84,ashMacro.g)*smoothstep(.22,.53,ashMacro.r)*(1.-ashDesert)*(1.-ashSnow);
  vec3 ashGrass=diffuseColor.rgb*mix(.70,1.32,ashMacro.r)*mix(.83,1.21,ashMicro.g);
  ashGrass*=mix(vec3(1.0),vec3(.76,1.13,.82),ashForest*.73);
  ashGrass*=mix(.82,1.18,ashFine.g);
@@ -36,14 +36,14 @@ export function terrainArt(T,mat,coarse){
  vec3 ashSand=mix(vec3(.28,.19,.105),vec3(.60,.45,.25),ashMacro.r)*(.88+.20*ashMicro.g+.055*sin(dot(ashP,vec2(7.3,4.4))+ashMacro.g*10.));
  vec3 ashIce=mix(vec3(.36,.45,.48),vec3(.79,.85,.86),ashMicro.g);
  vec3 ashMud=mix(vec3(.068,.080,.052),vec3(.18,.19,.11),ashMacro.r);
- vec3 ashColor=mix(ashGrass,ashEarth,clamp(ashSoil+ashPath,0.,.83));
+ vec3 ashColor=mix(ashGrass,ashEarth,clamp(ashSoil+ashPath+clearing*.36,0.,.83));
  ashColor=mix(ashColor,ashMud,vAshMarsh*smoothstep(.30,.68,ashMacro.r)*.76);
  ashColor=mix(ashColor,ashSand,ashDesert*.91);
  ashColor=mix(ashColor,ashIce,ashSnow*smoothstep(.16,.51,ashMacro.r+vAshGround.y*.012));
  ashColor=mix(ashColor,ashStone,ashRock*(1.-ashDesert*.58));
  diffuseColor.rgb=ashColor*(1.-ashWet*.17*(1.-ashSnow));
  `).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.48,ashWet*.5);');
- };mat.customProgramCacheKey=()=> 'ashborn-terrain-30';return {update(w,d){wet.value=w;sun.value=d},texture:tex}
+ };mat.customProgramCacheKey=()=> 'ashborn-terrain-39';return {update(w,d){wet.value=w;sun.value=d},texture:tex}
 }
 // Real particle sprites with soft edges, stable world-space positions and bounded populations.
 export function createEnvironment(T,scene,height,coarse){
