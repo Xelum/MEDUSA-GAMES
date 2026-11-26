@@ -125,7 +125,7 @@ export function createVisuals(T,renderer,coarse){
  float dark=(1.-smoothstep(.08,.35,day))*(1.-storm*.92);
  vec3 moonDir=normalize(vec3(.42,.58,-.70));float md=max(0.,dot(d,moonDir));float moon=smoothstep(.9988,.9992,md);col+=dark*(vec3(.42,.62,1.)*pow(md,85.)*.18+vec3(.87,.93,1.)*moon*.95);
  // Thin, slowly shifting aurora ribbons, integrated in the existing sky shader.
- float az=atan(d.z,d.x),bend=.35+.10*sin(az*2.7+clock*.032)+.045*sin(az*5.1-clock*.025);float ribbon=exp(-pow((h-bend)/.065,2.));float ribbon2=exp(-pow((h-bend-.13)/.095,2.));float folds=.48+.52*pow(.5+.5*sin(az*24.+sin(az*5.)*3.+clock*.08),2.);float gate=smoothstep(-.65,.15,d.z)*smoothstep(.05,.22,h);col+=aurora*dark*gate*folds*(vec3(.12,.76,.53)*ribbon*.64+vec3(.47,.22,.90)*ribbon2*.31);
+ if(aurora>.01&&dark>.01&&h>.05){float az=atan(d.z,d.x),bend=.35+.10*sin(az*2.7+clock*.032)+.045*sin(az*5.1-clock*.025);float a=(h-bend)/.065,b=(h-bend-.13)/.095;float ribbon=exp(-a*a),ribbon2=exp(-b*b);float folds=.48+.52*pow(.5+.5*sin(az*24.+sin(az*5.)*3.+clock*.08),2.);float gate=smoothstep(-.65,.15,d.z)*smoothstep(.05,.22,h);col+=aurora*dark*gate*folds*(vec3(.12,.76,.53)*ribbon*.64+vec3(.47,.22,.90)*ribbon2*.31);}
  gl_FragColor=vec4(col,1.);}
  `});const sky=new T.Mesh(new T.SphereGeometry(360,32,20),m);sky.frustumCulled=false;sky.renderOrder=-100;scene.add(sky);return{update(pos,day,dir,t,storm=0,bi=0,quality='high'){uniforms.aurora.value=quality==='low'?0:[.25,.68,.08,1,.43][bi];uniforms.storm.value=storm;sky.position.copy(pos);uniforms.day.value=day;uniforms.sunDir.value.copy(dir);uniforms.clock.value=t}}
  }
