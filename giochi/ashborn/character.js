@@ -62,7 +62,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   const stance=.64-.15*run,span=(.50+.13*run)*walk,legLift=(.13+.14*run)*walk;
   const lift=(-walk*(.10+.065*run)+walk*(.018+.016*run)*Math.cos(phase*2))*ground+(1-walk)*Math.sin(time*2.1)*.006;
   bodyLift+=(lift-bodyLift)*blend;
-  leanX+=((-(walk*(.035+run*.13)*gaitForward+.035*air))-leanX)*relax;
+  leanX+=((walk*(.035+run*.13)*gaitForward+.035*air)-leanX)*relax;
   leanZ+=((-gaitSide*walk*.065-gaitTurn*.012+Math.sin(phase)*walk*.022)*ground-leanZ)*relax;
   twist+=((Math.sin(phase)*walk*(.045+run*.025)*ground-gaitTurn*.009)-twist)*blend;
   body.rotation.set(leanX*(1-swimming)+.82*swimming,twist*(1-swimming),leanZ*(1-swimming)+Math.sin(stroke)*.06*swimming);
