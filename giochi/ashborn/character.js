@@ -27,7 +27,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   colors.push(shade.r,shade.g,shade.b);
  }
  function mat(color,kind,extra={}){const m=visuals.material(color,kind,extra);ownM.push(m);return m}
- const attachments=[];const skinMat=mat(skin,'skin',{roughness:.86,map:null,bumpScale:.0009,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.91,bumpScale:.006}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.93,bumpScale:.002}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.93,bumpScale:.002});ownM.push(metal);
+ const attachments=[];const skinMat=mat(skin,'skin',{roughness:.92,map:null,bumpMap:null,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.94,bumpMap:null}),dark=mat(0x352b23,'cloth',{bumpMap:null}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpMap:null}),fur=mat(0x75634e,'bark',{bumpMap:null}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.95,bumpMap:null}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.95,bumpMap:null});ownM.push(metal);
  const geometry=new T.BufferGeometry();ownG.push(geometry);geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(bi),4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(Float32Array.from(bw,x=>x/255),4));
  // Assign clothing directly to the continuous mesh, so the body remains covered even during movement.
  const bins=Array.from({length:5},()=>[]);
@@ -38,11 +38,11 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   if(eq.wintercoat&&a<.62&&y>=1.45&&y<6.53)k=4;
   if(eq.boots&&a<.3&&y< -5.2)k=2;
   if(a>.83&&y>2.45&&y<2.88&&x>4.4)k=2;
-  bins[k].push(...ids);
+  const covered=a<.15&&y>-.98&&y<1.78&&v.every(p=>p[1]>-1.10&&p[1]<1.92&&Math.abs(p[0])<2.8);if(!covered)bins[k].push(...ids);
  }
- let offset=0;for(let i=0;i<bins.length;i++){geometry.addGroup(offset,bins[i].length,i);offset+=bins[i].length}geometry.setIndex(bins.flat());geometry.computeVertexNormals();
+ let offset=0;for(let i=0;i<bins.length;i++){geometry.addGroup(offset,bins[i].length,i);offset+=bins[i].length}geometry.setIndex(Array.from(tri));geometry.computeVertexNormals();geometry.setIndex(bins.flat());
  const normal=geometry.attributes.normal;
- const mesh=new T.SkinnedMesh(geometry,[skinMat,leather,dark,linen,fur]);mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;body.add(mesh);
+ const mesh=new T.SkinnedMesh(geometry,[skinMat,leather,dark,linen,fur]);mesh.castShadow=mesh.receiveShadow=false;mesh.frustumCulled=false;body.add(mesh);
  const bones=[],jointNames=[null,'l-shoulder','l-elbow','l-hand','r-shoulder','r-elbow','r-hand','l-upper-leg','l-knee','l-ankle','r-upper-leg','r-knee','r-ankle'],parents=[-1,0,1,2,0,4,5,0,7,8,0,10,11],jointPos=jointNames.map(n=>n?source(...D.joints[n].p.map((x,i)=>x+D.joints[n].d[i]*muscle)):V());
  for(let i=0;i<13;i++){const b=new T.Bone();b.name=D.bones[i];b.position.copy(jointPos[i]);if(parents[i]>=0){b.position.sub(jointPos[parents[i]]);bones[parents[i]].add(b)}else mesh.add(b);bones.push(b)}
  root.updateMatrixWorld(true);const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);
@@ -66,8 +66,8 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   for(let i=0;i<2;i++){
    const side=i===0?1:-1,l=i===0?7:10,u=((phase/TAU+i*.5)%1+1)%1;
    let travel,footLift,toe;
-   if(u<stance){const t=u/stance;travel=1-2*t;footLift=0;toe=(-.09*Math.max(0,1-t*6)+.14*Math.max(0,(t-.82)/.18))*walk}
-   else{const t=(u-stance)/(1-stance),smooth=t*t*(3-2*t);travel=-1+2*smooth;footLift=Math.sin(Math.PI*t)*legLift;toe=.10*Math.sin(Math.PI*t)*walk}
+   if(u<stance){const t=u/stance;travel=1-2*t;footLift=0;toe=(.075*Math.sin(Math.PI*t)*Math.cos(Math.PI*t)*-1)*walk}
+   else{const t=(u-stance)/(1-stance),smooth=t*t*(3-2*t);travel=-1+2*smooth;footLift=Math.sin(Math.PI*t)*legLift;toe=.075*Math.sin(Math.PI*t)*walk}
    const hip=jointPos[l],ankle=jointPos[l+2],len=gaitLengths[l+1]+gaitLengths[l+2],width=Math.abs(hip.x)*(.78+.06*run);
    const lateral=clamp(-gaitSide*travel*span*.45,-.08,.08),x=side*Math.max(.095,width+side*lateral),z=ankle.z+gaitForward*travel*span,y=ankle.y+footLift;
    const reach=Math.hypot(x-hip.x,z-hip.z),vertical=Math.sqrt(Math.max(.04,(len*.993)**2-reach**2));
@@ -96,7 +96,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
    gaitLeg1.set(side*.045,-1,0).applyAxisAngle(gaitAxis,jumpAngle*air+swimAngle*swimming).normalize();
    gaitLeg2.set(side*.025,-1,0).applyAxisAngle(gaitAxis,(jumpAngle+.65)*air+(swimAngle+.43)*swimming).normalize();
    gaitLeg1.lerp(gaitGround1,ground).normalize();gaitLeg2.lerp(gaitGround2,ground).normalize();
-   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,toe*ground+.13*air+.25*swimming);if(ground>.98){gaitFootQ.setFromAxisAngle(gaitAxis,toe);bones[l+2].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitBodyInv).multiply(gaitFootQ))}
+   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,toe*ground+.13*air+.25*swimming);gaitFootQ.setFromAxisAngle(gaitAxis,toe);gaitInv.copy(gaitB).invert().multiply(gaitBodyInv).multiply(gaitFootQ);bones[l+2].quaternion.slerp(gaitInv,ground);
    // Arms oppose the planted leg; elbow flex and shoulder rotation increase during running.
    const hit=i===0?0:gaitHit,block=i===0?clamp(guard,0,1):0,armSwing=travel*walk*(.19+.30*run)*gaitForward*ground-.34*air;
    const upper=((armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block)*(1-swimming)+(-1.1+Math.sin(stroke+i*Math.PI)*1.05)*swimming;
@@ -110,9 +110,9 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  animate();
  const offhand=new T.Group();bones[3].add(offhand);offhand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[0].clone().invert()));offhand.quaternion.copy(neutralHand[0].clone().invert());const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
  // Fit the garment to the same morphed mesh and bind it to the SAME skeleton.
- function add(p,g,m,x=0,y=0,z=0){ownG.push(g);const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;p.add(o);return o}
+ function add(p,g,m,x=0,y=0,z=0){ownG.push(g);const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=false;p.add(o);return o}
  function skinned(name,pos,uvs,indices,weights,materials,groups=null){
-  const g=new T.BufferGeometry();ownG.push(g);g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));g.setIndex(indices);const ii=[],ww=[];for(const a of weights){const top=a.map((v,i)=>[i,v]).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=top.reduce((s,p)=>s+p[1],0)||1;ii.push(...top.map(p=>p[0]));ww.push(...top.map(p=>p[1]/sum))}g.setAttribute('skinIndex',new T.Uint16BufferAttribute(ii,4));g.setAttribute('skinWeight',new T.Float32BufferAttribute(ww,4));if(groups)for(const a of groups)g.addGroup(...a);g.computeVertexNormals();const m=new T.SkinnedMesh(g,materials);m.name=name;m.castShadow=m.receiveShadow=true;m.frustumCulled=false;body.add(m);m.bind(skeleton,mesh.bindMatrix);attachments.push(m);return m
+  const g=new T.BufferGeometry();ownG.push(g);g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));g.setIndex(indices);const ii=[],ww=[];for(const a of weights){const top=a.map((v,i)=>[i,v]).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=top.reduce((s,p)=>s+p[1],0)||1;ii.push(...top.map(p=>p[0]));ww.push(...top.map(p=>p[1]/sum))}g.setAttribute('skinIndex',new T.Uint16BufferAttribute(ii,4));g.setAttribute('skinWeight',new T.Float32BufferAttribute(ww,4));if(groups)for(const a of groups)g.addGroup(...a);g.computeVertexNormals();const m=new T.SkinnedMesh(g,materials);m.name=name;m.castShadow=m.receiveShadow=false;m.frustumCulled=false;body.add(m);m.bind(skeleton,mesh.bindMatrix);attachments.push(m);return m
  }
  function vertexWeights(i){const w=Array(13).fill(0);for(let j=0;j<4;j++)w[bi[i*4+j]]+=bw[i*4+j]/255;return w}
  // Exact horizontal cross-section of the anatomical body (ray/segment intersections).
@@ -179,12 +179,18 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   smoothOverlay(field,hairMat,(p,f)=>.001+clamp(f*.035,0,beard===6?.0018:beard===1?.005*(1+q('beardLength')*.6):.016),(v,p,f)=>{if([2,3,7].includes(beard)&&p[1]<7.35){const t=clamp((7.35-p[1])/.43,0,1),center=clamp(1-Math.abs(p[0])/.75,0,1);v.y-=(beard===7?.22:beard===3?.16:.09)*(1+q('beardLength')*.55)*t*center;v.z+=.018*t*center}},'Continuous fitted beard')
  }
  // Tunic and winter coat use the underlying continuous skinned body surface.
- if(eq.wintercoat)overlay((x,y,z)=>y>4.8&&y<6.65&&Math.abs(x)<2.6,fur,.014,undefined,'Fitted fur collar');
+ if(eq.wintercoat)overlay((x,y,z)=>y>4.8&&y<6.65&&Math.abs(x)<2.6,fur,.022,undefined,'Fitted fur collar');
  const iris=new T.MeshStandardMaterial({color:EYES[ch.eyes]||0x60422b,roughness:.32}),eyeWhite=new T.MeshStandardMaterial({color:0xbdb7a9,roughness:.62}),pupil=new T.MeshStandardMaterial({color:0x171612,roughness:.32});ownM.push(iris,eyeWhite,pupil);
  for(const side of ['l','r']){const c=source(...D.joints[side+'-eye'].p);const e=add(body,new T.SphereGeometry(.014,16,12),eyeWhite,c.x,c.y,c.z-.002);add(body,new T.SphereGeometry(.0065,16,10),iris,c.x,c.y,c.z+.010);add(body,new T.SphereGeometry(.003,12,8),pupil,c.x,c.y,c.z+.015);const sign=side==='l'?1:-1;smoothOverlay((x,y,z)=>Math.min(1-((source(x,y,z).x-c.x)/.027)**2-((y-(8.39+.045*Math.cos(x*8)))/.045)**2,z-1.02),hairMat,()=>.0015,undefined,'Fitted eyebrow')}
  if(ch.mark){const m=new T.MeshStandardMaterial({color:[0,0x804f41,0x274f71,0x8c392b,0x3f4231,0x25201c,0xc7c0a9,0x895446,0x35566a,0x704238][ch.mark]||0x3f4231,roughness:.95,transparent:true,opacity:.78,depthWrite:false});ownM.push(m);const kind=ch.mark;
  smoothOverlay((x,y,z)=>{const ax=Math.abs(x),base=z-.8,cheek=Math.min(y-7.56,8.54-y,.11-Math.abs(ax-(.43+(y-8)*.12)));let field=cheek;if(kind===1)field=Math.min(x,y-7.56,8.54-y,.06-Math.abs(x-(.38+(y-8)*.25)));if(kind===4)field=Math.min(cheek,8.08-y);if(kind===5)field=Math.min(.10-Math.abs(y-8.15),.84-ax);if(kind===6)field=Math.min(.20-Math.abs(ax-.49),y-7.75,8.29-y);if(kind===7)field=Math.min(x,.06-Math.abs(x-(.39+(y-8.38)*.25)),y-8.14,8.64-y);if(kind===8)field=Math.min(.23-Math.abs(ax-.49),Math.max(.045-Math.abs(y-7.85),.045-Math.abs(y-8.02)));if(kind===9)field=Math.min(y-8.34,8.73-y,Math.max(.045-Math.abs(x),.045-Math.abs(Math.abs(x)-(y-8.34)*.58)));return Math.min(base,field)},m,()=>.0018,undefined,'Fitted face marking')
  }
 
+ // Batch rigid facial and hair details by material, preserving their local transforms.
+ const batches=new Map();for(const m of body.children){if(!m.isMesh||m.isSkinnedMesh||Array.isArray(m.material)||!m.geometry?.attributes.position)continue;if(!batches.has(m.material))batches.set(m.material,[]);batches.get(m.material).push(m)}
+ for(const [material,items] of batches){if(items.length<2)continue;const positions=[],normals=[],uvs=[],indices=[];let offset=0;const vec=V(),normalVec=V(),nm=new T.Matrix3();
+  for(const m of items){m.updateMatrix();nm.getNormalMatrix(m.matrix);const geo=m.geometry,p=geo.attributes.position,n=geo.attributes.normal,u=geo.attributes.uv;for(let i=0;i<p.count;i++){vec.fromBufferAttribute(p,i).applyMatrix4(m.matrix);positions.push(vec.x,vec.y,vec.z);if(n)normalVec.fromBufferAttribute(n,i).applyNormalMatrix(nm);else normalVec.set(0,1,0);normals.push(normalVec.x,normalVec.y,normalVec.z);uvs.push(u?u.getX(i):0,u?u.getY(i):0)}if(geo.index){for(let i=0;i<geo.index.count;i++)indices.push(offset+geo.index.getX(i))}else for(let i=0;i<p.count;i++)indices.push(offset+i);offset+=p.count;body.remove(m)}
+  const geo=new T.BufferGeometry();ownG.push(geo);geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));geo.setIndex(indices);const merged=new T.Mesh(geo,material);merged.castShadow=merged.receiveShadow=false;body.add(merged)
+ }
  return {body,arms:[bones[1],bones[4]],legs:[bones[7],bones[10]],hand,offhand,skinMat,mesh,skeleton,attachments,animate,dispose(){for(const g of ownG)g.dispose();for(const m of ownM)m.dispose();skeleton.dispose()}};
 }
