@@ -16,7 +16,7 @@ export function relief(x,z,w,d){const edge=smooth((Math.hypot(x,z)-27)/65)*smoot
 export function worldHeight(x,z,weights,water,legacy=false){const w=weights(x,z),d=water(x,z),base=oldBase(x,z,w,d);if(legacy)return base;let y=base+relief(x,z,w,d);for(const site of SITES){const dist=Math.hypot(x-site.x,z-site.z);if(dist>site.r+13)continue;const target=oldBase(site.x,site.z,weights(site.x,site.z),water(site.x,site.z))+relief(site.x,site.z,weights(site.x,site.z),water(site.x,site.z));y+=(target-y)*(1-smooth((dist-site.r)/(13)));}return y}
 export function siteScale(s){return s.kind==='crypt'?1.48:s.kind==='cave'?1.5:s.kind==='tower'?1.85:s.kind==='witch'||s.kind==='hut'?1.65:1.45}
 export function protectedSite(x,z,pad=0){return SITES.some(s=>Math.hypot(x-s.x,z-s.z)<s.r+pad)}
-export function buildWorld(T,scene,visuals,height,coarse){
+export function buildWorld(T,scene,visuals,height,coarse,extraSites=[]){
  const sites=[],walls=[],lights=[],roofs=[],obstacles=[],geos={box:new T.BoxGeometry(1,1,1),rock:new T.IcosahedronGeometry(1,2),cyl:new T.CylinderGeometry(.82,1,1,10),cone:new T.ConeGeometry(1,1,12)},materials=new Map();
  function mat(c,k='stone'){let key=c+':'+k;if(!materials.has(key))materials.set(key,visuals.material(c,k,{roughness:.92}));return materials.get(key)}
  function mesh(p,geo,c,x,y,z,sx,sy,sz,k='stone'){const m=new T.Mesh(geos[geo],mat(c,k));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;m.receiveShadow=true;p.add(m);return m}
@@ -31,7 +31,7 @@ export function buildWorld(T,scene,visuals,height,coarse){
   for(const x of [-2.55,2.55])for(const z of [-3,3])B(s.g,0x493628,x,1.6,z,.24,3.2,.24);B(s.g,0x796347,0,.05,0,5.35,.11,6,'bark');B(s.g,0x55412e,-1.75,.75,-1.8,1.5,.16,.76);for(const x of [-2.3,-1.2])B(s.g,0x55412e,x,.38,-1.8,.12,.76,.5);
   if(witch){const pot=R(s.g,0x343d37,-1.6,.58,1.05,.65,.54,.65);const rim=C(s.g,0x565d49,-1.6,.92,1.05,.58,.13,.58,'stone');const brew=C(s.g,0x9ec765,-1.6,1.00,1.05,.50,.06,.50,'earth');brew.material=new T.MeshBasicMaterial({color:0x8da64b});torch(s,-1.6,1.24,1.05,0x9fe48c);for(let i=0;i<5;i++){C(s.g,0x738d53,-2.3+i*.22,1.04,-1.8,.075,.3,.075,'earth')}const npc=new T.Group();npc.position.set(1.55,0,-1.65);s.g.add(npc);mesh(npc,'cone',0x3f4c36,0,.78,0,.63,1.48,.63,'cloth');R(npc,0xa58a6e,0,1.67,0,.16,.21,.16);C(npc,0x39362e,0,1.86,0,.41,.06,.41,'cloth');mesh(npc,'cone',0x39362e,0,2.09,0,.29,.53,.29,'cloth');s.npc={x:s.x+1.55,z:s.z-1.65};torch(s,2,2,2,0x8dce83)}else torch(s,2,2,2);
  }
- for(const def of SITES){const s={...def,scale:siteScale(def),g:new T.Group()};s.g.position.set(s.x,height(s.x,s.z),s.z);scene.add(s.g);sites.push(s);obstacles.push(s.g);
+ for(const def of [...SITES,...extraSites]){const s={...def,scale:siteScale(def),g:new T.Group()};s.g.position.set(s.x,height(s.x,s.z),s.z);scene.add(s.g);sites.push(s);obstacles.push(s.g);
   if(s.kind==='cave'){const c=s.biome===3?0x85999e:0x686d60;wall(s,-4.7,0,1.4,15,2,4,c);wall(s,4.7,0,1.4,15,2,4,c);wall(s,0,-7.4,10,1.3,2,4,c);
    for(let i=0;i<9;i++)for(const side of [-1,1]){const r=R(s.g,c,side*(5.2+.25*Math.sin(i*2)),2.3,(i-4)*1.65,1.8,2.9,1.55);r.rotation.y=i*.7}
    for(let i=0;i<6;i++){const r=R(s.g,c,0,5.15,(i-2.5)*2.7,6.5,1.8,2.2);roofs.push({site:s,m:r})}
@@ -88,7 +88,7 @@ export function buildWorld(T,scene,visuals,height,coarse){
  }
  function blocked(x,z){return walls.some(w=>w.site.g.visible&&Math.abs(x-w.x)<w.w/2+.24&&Math.abs(z-w.z)<w.d/2+.24)}
  function inside(x,z){return sites.find(s=>s.g.visible&&s.inside&&Math.abs(x-s.x)<s.inside.w&&Math.abs(z-s.z)<s.inside.d)}
- function update(x,z,t){for(const s of sites)s.g.visible=Math.hypot(x-s.x,z-s.z)<145;for(const v of lights){v.l.visible=v.site.g.visible&&Math.hypot(x-v.site.x,z-v.site.z)<20;v.l.intensity=14+2*Math.sin(t*9+v.phase);v.f.scale.y=.48*(1+.12*Math.sin(t*8+v.phase))}}
+ function update(x,z,t){for(const s of sites)s.g.visible=s.active!==false&&Math.hypot(x-s.x,z-s.z)<145;for(const v of lights){v.l.visible=v.site.g.visible&&Math.hypot(x-v.site.x,z-v.site.z)<20;v.l.intensity=14+2*Math.sin(t*9+v.phase);v.f.scale.y=.48*(1+.12*Math.sin(t*8+v.phase))}}
  function reheight(){for(const s of sites)s.g.position.y=height(s.x,s.z)}
  return {sites,obstacles,blocked,inside,update,reheight};
 }
