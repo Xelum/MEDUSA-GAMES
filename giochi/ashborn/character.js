@@ -22,12 +22,12 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const shade=new T.Color();
  for(let i=0;i<D.count;i++){let x=(base[i*3]+morph[i*3]*muscle)/1000,y=(base[i*3+1]+morph[i*3+1]*muscle)/1000,z=(base[i*3+2]+morph[i*3+2]*muscle)/1000;raw.push([x,y,z]);const p=source(x,y,z);points.push(p);positions.push(p.x,p.y,p.z);uv.push(uvRaw[i*2]/16000,uvRaw[i*2+1]/16000);
   const warm=Math.max(0,1-Math.abs(y-7.65)/.55)*Math.max(0,1-Math.abs(Math.abs(x)-.43)/.3)*clamp((z-.9)*2,0,1);
-  const tone=.94+.055*Math.sin(x*15+y*7+z*8)+.025*Math.sin(x*83+z*53);shade.setRGB(clamp(tone+warm*.035,.75,1.06),clamp(tone-warm*.055,.72,1.02),clamp(tone-warm*.07,.7,1.02));
+  const jointWarm=ga(y,-3.1,.55)*.018+ga(y,3.8,.4)*.014,earWarm=ga(y,7.9,.45)*ga(Math.abs(x),.90,.20)*.024;const tone=.99+.011*Math.sin(x*8+y*4+z*3)+.007*Math.sin(x*32+z*21);shade.setRGB(clamp(tone+warm*.025+jointWarm+earWarm,.91,1.07),clamp(tone-warm*.028-jointWarm*.4-earWarm,.89,1.04),clamp(tone-warm*.04-jointWarm*.7-earWarm,.87,1.03));
   if(y>7.22&&y<7.54&&Math.abs(x)<.31&&z>1.42){const strength=clamp((z-1.42)*4,0,.45)*clamp(1-Math.abs(y-7.39)/.16,0,1);shade.lerp(new T.Color(1,.65,.59),strength)}
   colors.push(shade.r,shade.g,shade.b);
  }
  function mat(color,kind,extra={}){const m=visuals.material(color,kind,extra);ownM.push(m);return m}
- const attachments=[];const skinMat=mat(skin,'skin',{roughness:.78,bumpScale:.0025,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.94,bumpScale:.018}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.86,bumpScale:.007}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.88,bumpScale:.005});ownM.push(metal);
+ const attachments=[];const skinMat=mat(skin,'skin',{roughness:.86,bumpScale:.0009,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.91,bumpScale:.006}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.93,bumpScale:.002}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.93,bumpScale:.002});ownM.push(metal);
  const geometry=new T.BufferGeometry();ownG.push(geometry);geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(bi),4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(Float32Array.from(bw,x=>x/255),4));
  // Assign clothing directly to the continuous mesh, so the body remains covered even during movement.
  const bins=Array.from({length:5},()=>[]);
@@ -52,44 +52,56 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const gaitLengths=jointPos.map((p,i)=>parents[i]>=0?p.distanceTo(jointPos[parents[i]]):0);
  function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
  // Two-bone leg IK: a planted foot sweeps backward, then lifts and returns forward.
- const gaitTarget=V(),gaitDirection=V(),gaitBend=V(),gaitKnee=V(),gaitGround1=V(),gaitGround2=V();
+ const gaitTarget=V(),gaitDirection=V(),gaitBend=V(),gaitKnee=V(),gaitGround1=V(),gaitGround2=V(),gaitBodyInv=Q(),gaitFootQ=Q();
  let neutralHand=[],gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
  function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0,swim=0){
   dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-14*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
   gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-22*dt));
-  const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2),walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),air=gaitAir,ground=(1-air)*(1-swimming);
-  const stance=.64-.15*run,span=(.50+.13*run)*walk,legLift=(.13+.14*run)*walk;
-  const lift=(-walk*(.10+.065*run)+walk*(.018+.016*run)*Math.cos(phase*2))*ground+(1-walk)*Math.sin(time*2.1)*.006;
-  bodyLift+=(lift-bodyLift)*blend;
-  leanX+=((walk*(.035+run*.13)*gaitForward+.035*air)-leanX)*relax;
-  leanZ+=((-gaitSide*walk*.065-gaitTurn*.012+Math.sin(phase)*walk*.022)*ground-leanZ)*relax;
-  twist+=((Math.sin(phase)*walk*(.045+run*.025)*ground-gaitTurn*.009)-twist)*blend;
+  const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2),walk=clamp(gaitSpeed/2.65,0,1),run=clamp((gaitSpeed-2.65)/3.05,0,1),air=gaitAir,ground=(1-air)*(1-swimming);
+  const stance=.60-.13*run,span=(.51+.105*run)*walk,legLift=(.105+.14*run)*walk;
+  // Match a human stride: foot centers beneath the hips, no wide A-pose.
+  const feet=[];
+  let pelvisDrop=0;
+  for(let i=0;i<2;i++){
+   const side=i===0?1:-1,l=i===0?7:10,u=((phase/TAU+i*.5)%1+1)%1;
+   let travel,footLift,toe;
+   if(u<stance){const t=u/stance;travel=1-2*t;footLift=0;toe=(-.09*Math.max(0,1-t*6)+.14*Math.max(0,(t-.82)/.18))*walk}
+   else{const t=(u-stance)/(1-stance),smooth=t*t*(3-2*t);travel=-1+2*smooth;footLift=Math.sin(Math.PI*t)*legLift;toe=.10*Math.sin(Math.PI*t)*walk}
+   const hip=jointPos[l],ankle=jointPos[l+2],len=gaitLengths[l+1]+gaitLengths[l+2],width=Math.abs(hip.x)*(.78+.06*run);
+   const lateral=clamp(-gaitSide*travel*span*.45,-.08,.08),x=side*Math.max(.095,width+side*lateral),z=ankle.z+gaitForward*travel*span,y=ankle.y+footLift;
+   const reach=Math.hypot(x-hip.x,z-hip.z),vertical=Math.sqrt(Math.max(.04,(len*.993)**2-reach**2));
+   pelvisDrop=Math.max(pelvisDrop,hip.y-y-vertical);
+   feet.push({travel,footLift,toe,x,y,z});
+  }
+  const lift=(-Math.max(0,pelvisDrop)-.007*walk)*ground+(1-walk)*Math.sin(time*2.1)*.003;
+  bodyLift+=(lift-bodyLift)*(1-Math.exp(-22*dt));
+  leanX+=((walk*(.018+run*.11)*gaitForward+.035*air)-leanX)*relax;
+  leanZ+=((-gaitSide*walk*.035-gaitTurn*.008+Math.sin(phase)*walk*.014)*ground-leanZ)*relax;
+  twist+=((Math.sin(phase)*walk*(.025+run*.022)*ground-gaitTurn*.005)-twist)*blend;
   body.rotation.set(leanX*(1-swimming)+.82*swimming,twist*(1-swimming),leanZ*(1-swimming)+Math.sin(stroke)*.06*swimming);
   gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
   body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.012*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
+  gaitBodyInv.setFromEuler(body.rotation).invert();
   for(let i=0;i<2;i++){
-   const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,u=((p/TAU)%1+1)%1;
-   let travel,footLift,toe;
-   if(u<stance){const t=u/stance;travel=1-2*t;footLift=0;toe=(-.12*Math.max(0,1-t*6)+.20*Math.max(0,(t-.78)/.22))*walk}
-   else{const t=(u-stance)/(1-stance),smooth=t*t*(3-2*t);travel=-1+2*smooth;footLift=Math.sin(Math.PI*t)*legLift;toe=.15*Math.sin(Math.PI*t)*walk}
-   const hip=jointPos[l],ankle=jointPos[l+2],upperLength=gaitLengths[l+1],lowerLength=gaitLengths[l+2];
-   gaitTarget.copy(ankle);gaitTarget.x+=-gaitSide*travel*span*.8;gaitTarget.z+=gaitForward*travel*span;gaitTarget.y+=footLift-bodyLift*ground+.013*walk;
-   gaitDirection.copy(gaitTarget).sub(hip);const length=clamp(gaitDirection.length(),Math.abs(upperLength-lowerLength)+.001,(upperLength+lowerLength)*.997);gaitDirection.normalize();
+   const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,{travel,toe,x,y,z}=feet[i];
+   const hip=jointPos[l],upperLength=gaitLengths[l+1],lowerLength=gaitLengths[l+2];
+   gaitTarget.set(x,y,z).sub(body.position).applyQuaternion(gaitBodyInv);
+   gaitDirection.copy(gaitTarget).sub(hip);const length=clamp(gaitDirection.length(),Math.abs(upperLength-lowerLength)+.001,(upperLength+lowerLength)*.998);gaitDirection.normalize();
    const along=(upperLength*upperLength-lowerLength*lowerLength+length*length)/(2*length),bend=Math.sqrt(Math.max(0,upperLength*upperLength-along*along));
-   gaitBend.set(side*.09,0,1);gaitBend.addScaledVector(gaitDirection,-gaitBend.dot(gaitDirection)).normalize();
+   gaitBend.set(0,0,1);gaitBend.addScaledVector(gaitDirection,-gaitBend.dot(gaitDirection)).normalize();
    gaitKnee.copy(gaitDirection).multiplyScalar(along).addScaledVector(gaitBend,bend);
    gaitGround1.copy(gaitKnee).normalize();gaitGround2.copy(gaitDirection).multiplyScalar(length).sub(gaitKnee).normalize();
    const jumpAngle=i===0?-.44:.22,swimAngle=Math.sin(stroke+i*Math.PI)*.32;
    gaitLeg1.set(side*.045,-1,0).applyAxisAngle(gaitAxis,jumpAngle*air+swimAngle*swimming).normalize();
    gaitLeg2.set(side*.025,-1,0).applyAxisAngle(gaitAxis,(jumpAngle+.65)*air+(swimAngle+.43)*swimming).normalize();
    gaitLeg1.lerp(gaitGround1,ground).normalize();gaitLeg2.lerp(gaitGround2,ground).normalize();
-   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,toe*ground+.13*air+.25*swimming);
+   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,toe*ground+.13*air+.25*swimming);if(ground>.98){gaitFootQ.setFromAxisAngle(gaitAxis,toe);bones[l+2].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitBodyInv).multiply(gaitFootQ))}
    // Arms oppose the planted leg; elbow flex and shoulder rotation increase during running.
-   const hit=i===0?0:gaitHit,block=i===0?clamp(guard,0,1):0,armSwing=travel*walk*(.27+.32*run)*gaitForward*ground-.34*air;
+   const hit=i===0?0:gaitHit,block=i===0?clamp(guard,0,1):0,armSwing=travel*walk*(.19+.30*run)*gaitForward*ground-.34*air;
    const upper=((armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block)*(1-swimming)+(-1.1+Math.sin(stroke+i*Math.PI)*1.05)*swimming;
-   gaitArm1.set(side*(.13+.035*run)*(1-block)+Math.sin(p)*.035*gaitSide,-1,.018).applyAxisAngle(gaitAxis,upper);
-   const elbow=.20+walk*.13+run*.45+hit*.48+block*.68;
+   gaitArm1.set(side*(.085+.035*run)*(1-block)+Math.sin(p)*.018*gaitSide,-1,.018).applyAxisAngle(gaitAxis,upper);
+   const elbow=.14+walk*.10+run*.52+hit*.48+block*.68;
    gaitArm2.set(side*.055-block*.48,-1,.06).applyAxisAngle(gaitAxis,upper-elbow);
    const r=pair(a,a+1,a+2,gaitArm1,gaitArm2);if(!neutralHand[i])neutralHand[i]=r.clone();
   }
@@ -108,13 +120,13 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  function crossSection(y){const out=[];for(let j=0;j<tri.length;j+=3){const ids=[tri[j],tri[j+1],tri[j+2]];if(ids.some(i=>armWeight(i)>.25))continue;const f=ids.map(i=>points[i]),q=[];for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);q.push([a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t])}}if(q.length===2)out.push(q)}return out}
  const beltY=source(0,2.12,0).y,midZ=.036;
  function radial(section,s,c){let far=0;for(const [[ax,az],[bx,bz]] of section){const dx=bx-ax,dz=bz-az,zz=az-midZ,den=s*dz-c*dx;if(Math.abs(den)<1e-9)continue;const t=(ax*dz-zz*dx)/den,u=(ax*c-zz*s)/den;if(t>0&&u>=-.0001&&u<=1.0001)far=Math.max(far,t)}return far}
- const skirtP=[],skirtUV=[],skirtW=[],skirtBins=[[],[]],N=72,levels=[2.26,2.12,1.78,1.36,.85,.28,-.32,-.95,-1.42].map((y,i)=>i<3?y:y+([0,0,0,0,-.18,.16,-.09,.10][style]||0)*(i-2)/6);
+ const skirtP=[],skirtUV=[],skirtW=[],skirtBins=[[],[]],N=48,levels=[2.26,2.12,1.78,1.36,.85,.28,-.32,-.95,-1.42].map((y,i)=>i<3?y:y+([0,0,0,0,-.18,.16,-.09,.10][style]||0)*(i-2)/6);
  // Source CC0 helper skirt gives the flare; fit it to the body at each slice.
  const helper=G.positions.map((p,i)=>source(...p.map((x,k)=>x+G.morph[i][k]*muscle)));
  for(let j=0;j<levels.length;j++){const y=source(0,levels[j],0).y,section=crossSection(y);
   for(let i=0;i<=N;i++){const a=i/N*TAU,s=Math.sin(a),c=Math.cos(a);const actual=radial(section,s,c);let fitted=0,best=Infinity,weight=null;
    for(let k=0;k<helper.length;k++){const q=helper[k],angle=Math.atan2(q.x,q.z-midZ),da=Math.atan2(Math.sin(angle-a),Math.cos(angle-a)),dist=Math.abs(q.y-y)*3+Math.abs(da)*.12;if(dist<best){best=dist;fitted=Math.hypot(q.x,q.z-midZ);weight=G.weights[k]}}
-   const flare=clamp((j-2)/6,0,1),fallback=Math.hypot(.175*s,.139*c),r=Math.max(actual+.004+(j<2?.001:.008),j<3?actual||fallback:fitted+.012+flare*.025)*(1+flare*.028*Math.cos(a*12));
+   const flare=clamp((j-2)/6,0,1),fallback=Math.hypot(.175*s,.139*c),r=Math.max(actual+.004+(j<2?.001:.008),j<3?actual||fallback:fitted+.008+flare*.012)*(1+flare*.017*Math.cos(a*12));
    const w=Array(13).fill(0);let blend=j<=2?0:Math.min(.90,(j-2)*.17);w[0]=1-blend;const side=clamp(.5+s*1.1,0,1);w[7]=blend*side;w[10]=blend*(1-side);
    // Preserve the helper's own body-side weight bias without folding the waistband.
    if(weight&&j>2){const l=weight[7]+weight[8],r=weight[10]+weight[11],sum=l+r;if(sum>.02){w[7]=blend*(.55*side+.45*l/sum);w[10]=blend-w[7]}}
@@ -168,8 +180,8 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  }
  // Tunic and winter coat use the underlying continuous skinned body surface.
  if(eq.wintercoat)overlay((x,y,z)=>y>4.8&&y<6.65&&Math.abs(x)<2.6,fur,.014,undefined,'Fitted fur collar');
- const iris=new T.MeshStandardMaterial({color:EYES[ch.eyes]||0x60422b,roughness:.32}),eyeWhite=new T.MeshStandardMaterial({color:0xd8d4c5,roughness:.42}),pupil=new T.MeshStandardMaterial({color:0x171612,roughness:.32});ownM.push(iris,eyeWhite,pupil);
- for(const side of ['l','r']){const c=source(...D.joints[side+'-eye'].p);const e=add(body,new T.SphereGeometry(.016,24,16),eyeWhite,c.x,c.y,c.z);add(body,new T.SphereGeometry(.008,18,12),iris,c.x,c.y,c.z+.015);add(body,new T.SphereGeometry(.0038,12,8),pupil,c.x,c.y,c.z+.021);const sign=side==='l'?1:-1;smoothOverlay((x,y,z)=>Math.min(1-((source(x,y,z).x-c.x)/.027)**2-((y-(8.39+.045*Math.cos(x*8)))/.045)**2,z-1.02),hairMat,()=>.0015,undefined,'Fitted eyebrow')}
+ const iris=new T.MeshStandardMaterial({color:EYES[ch.eyes]||0x60422b,roughness:.32}),eyeWhite=new T.MeshStandardMaterial({color:0xbdb7a9,roughness:.62}),pupil=new T.MeshStandardMaterial({color:0x171612,roughness:.32});ownM.push(iris,eyeWhite,pupil);
+ for(const side of ['l','r']){const c=source(...D.joints[side+'-eye'].p);const e=add(body,new T.SphereGeometry(.014,16,12),eyeWhite,c.x,c.y,c.z-.002);add(body,new T.SphereGeometry(.0065,16,10),iris,c.x,c.y,c.z+.010);add(body,new T.SphereGeometry(.003,12,8),pupil,c.x,c.y,c.z+.015);const sign=side==='l'?1:-1;smoothOverlay((x,y,z)=>Math.min(1-((source(x,y,z).x-c.x)/.027)**2-((y-(8.39+.045*Math.cos(x*8)))/.045)**2,z-1.02),hairMat,()=>.0015,undefined,'Fitted eyebrow')}
  if(ch.mark){const m=new T.MeshStandardMaterial({color:[0,0x804f41,0x274f71,0x8c392b,0x3f4231,0x25201c,0xc7c0a9,0x895446,0x35566a,0x704238][ch.mark]||0x3f4231,roughness:.95,transparent:true,opacity:.78,depthWrite:false});ownM.push(m);const kind=ch.mark;
  smoothOverlay((x,y,z)=>{const ax=Math.abs(x),base=z-.8,cheek=Math.min(y-7.56,8.54-y,.11-Math.abs(ax-(.43+(y-8)*.12)));let field=cheek;if(kind===1)field=Math.min(x,y-7.56,8.54-y,.06-Math.abs(x-(.38+(y-8)*.25)));if(kind===4)field=Math.min(cheek,8.08-y);if(kind===5)field=Math.min(.10-Math.abs(y-8.15),.84-ax);if(kind===6)field=Math.min(.20-Math.abs(ax-.49),y-7.75,8.29-y);if(kind===7)field=Math.min(x,.06-Math.abs(x-(.39+(y-8.38)*.25)),y-8.14,8.64-y);if(kind===8)field=Math.min(.23-Math.abs(ax-.49),Math.max(.045-Math.abs(y-7.85),.045-Math.abs(y-8.02)));if(kind===9)field=Math.min(y-8.34,8.73-y,Math.max(.045-Math.abs(x),.045-Math.abs(Math.abs(x)-(y-8.34)*.58)));return Math.min(base,field)},m,()=>.0018,undefined,'Fitted face marking')
  }
