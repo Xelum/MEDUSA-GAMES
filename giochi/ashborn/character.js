@@ -38,7 +38,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   if(eq.wintercoat&&a<.62&&y>=1.45&&y<6.53)k=4;
   if(eq.boots&&a<.3&&y< -5.2)k=2;
   if(a>.83&&y>2.45&&y<2.88&&x>4.4)k=2;
-  const covered=a<.15&&y>-.98&&y<1.78&&v.every(p=>p[1]>-1.10&&p[1]<1.92&&Math.abs(p[0])<2.8);if(!covered)bins[k].push(...ids);
+  const covered=a<.15&&y>.65&&y<1.78&&v.every(p=>p[1]>.55&&p[1]<1.92&&Math.abs(p[0])<2.8);if(!covered)bins[k].push(...ids);
  }
  let offset=0;for(let i=0;i<bins.length;i++){geometry.addGroup(offset,bins[i].length,i);offset+=bins[i].length}geometry.setIndex(Array.from(tri));geometry.computeVertexNormals();geometry.setIndex(bins.flat());
  const normal=geometry.attributes.normal;
@@ -55,7 +55,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const gaitTarget=V(),gaitDirection=V(),gaitBend=V(),gaitKnee=V(),gaitGround1=V(),gaitGround2=V(),gaitBodyInv=Q(),gaitFootQ=Q();
  const gaitFeet=[{},{}];let neutralHand=[],gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
  function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0,swim=0){
-  dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-14*dt),relax=1-Math.exp(-8*dt);
+  dt=clamp(Number.isFinite(dt)?dt:1/60,0,.10);const blend=1-Math.exp(-14*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
   gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-22*dt));
   const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2),walk=clamp(gaitSpeed/2.65,0,1),run=clamp((gaitSpeed-2.65)/3.05,0,1),air=gaitAir,ground=(1-air)*(1-swimming);
