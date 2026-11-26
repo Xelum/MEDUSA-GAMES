@@ -51,37 +51,50 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const gaitA=Q(),gaitB=Q(),gaitInv=Q(),gaitTip=Q(),gaitAxis=V(1,0,0),gaitLeg1=V(),gaitLeg2=V(),gaitArm1=V(),gaitArm2=V(),gaitPivot=V(0,1.06,0),gaitOffset=V();
  const gaitLengths=jointPos.map((p,i)=>parents[i]>=0?p.distanceTo(jointPos[parents[i]]):0);
  function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
- let neutralHand=[],neutralFoot=null,gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
+ // Two-bone leg IK: a planted foot sweeps backward, then lifts and returns forward.
+ const gaitTarget=V(),gaitDirection=V(),gaitBend=V(),gaitKnee=V(),gaitGround1=V(),gaitGround2=V();
+ let neutralHand=[],gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
  function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0,swim=0){
-  dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-13*dt),relax=1-Math.exp(-8*dt);
+  dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-14*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
-  gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-24*dt));
-  const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2);const walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),amp=walk*(.49+run*.23),air=gaitAir,ground=1-air;
-  let lowest=Infinity;
+  gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-22*dt));
+  const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2),walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),air=gaitAir,ground=(1-air)*(1-swimming);
+  const stance=.64-.15*run,span=(.50+.13*run)*walk,legLift=(.13+.14*run)*walk;
+  const lift=(-walk*(.10+.065*run)+walk*(.018+.016*run)*Math.cos(phase*2))*ground+(1-walk)*Math.sin(time*2.1)*.006;
+  bodyLift+=(lift-bodyLift)*blend;
+  leanX+=((-(walk*(.035+run*.13)*gaitForward+.035*air))-leanX)*relax;
+  leanZ+=((-gaitSide*walk*.065-gaitTurn*.012+Math.sin(phase)*walk*.022)*ground-leanZ)*relax;
+  twist+=((Math.sin(phase)*walk*(.045+run*.025)*ground-gaitTurn*.009)-twist)*blend;
+  body.rotation.set(leanX*(1-swimming)+.82*swimming,twist*(1-swimming),leanZ*(1-swimming)+Math.sin(stroke)*.06*swimming);
+  gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
+  body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.012*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
   for(let i=0;i<2;i++){
-   const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,w=Math.sin(p),c=Math.cos(p);
-   const stride=(w+.09*Math.sin(p*2))*amp*gaitForward,legAngle=(stride*ground+(i===0?-.46:.18)*air)*(1-swimming)+Math.sin(stroke+i*Math.PI)*.28*swimming;
-   const knee=((.09+walk*(.10+Math.max(0,-c)*(.57+run*.35)))*ground+.57*air)*(1-swimming)+.35*swimming;
-   const sideSwing=-w*amp*.63*gaitSide*ground;
-   gaitLeg1.set(side*.045+sideSwing,-1,0).applyAxisAngle(gaitAxis,legAngle);
-   gaitLeg2.set(side*.02+sideSwing*.48,-1,0).applyAxisAngle(gaitAxis,legAngle+knee*(1-.38*Math.abs(gaitSide)));
-   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,legAngle*.14*ground+.16*air);
-   lowest=Math.min(lowest,jointPos[l].y+gaitLeg1.y*gaitLengths[l+1]+gaitLeg2.y*gaitLengths[l+2]);
-   const hit=i===0?0:gaitHit,armSwing=(-w*amp*(.74+run*.16)*gaitForward)*ground-.45*air;
-   const block=i===0?Math.max(0,Math.min(1,guard)):0;const upper=((armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block)*(1-swimming)+(-1.1+Math.sin(stroke+i*Math.PI)*1.05)*swimming;
-   gaitArm1.set(side*(.19+.045*walk)*(1-block)+w*.04*gaitSide,-1,.025).applyAxisAngle(gaitAxis,upper);
-   gaitArm2.set(side*.055-block*.48,-1,.10).applyAxisAngle(gaitAxis,upper-(.16+walk*(.19+run*.33)+hit*.48+block*.68));
+   const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,u=((p/TAU)%1+1)%1;
+   let travel,footLift,toe;
+   if(u<stance){const t=u/stance;travel=1-2*t;footLift=0;toe=(-.12*Math.max(0,1-t*6)+.20*Math.max(0,(t-.78)/.22))*walk}
+   else{const t=(u-stance)/(1-stance),smooth=t*t*(3-2*t);travel=-1+2*smooth;footLift=Math.sin(Math.PI*t)*legLift;toe=.15*Math.sin(Math.PI*t)*walk}
+   const hip=jointPos[l],ankle=jointPos[l+2],upperLength=gaitLengths[l+1],lowerLength=gaitLengths[l+2];
+   gaitTarget.copy(ankle);gaitTarget.x+=-gaitSide*travel*span*.8;gaitTarget.z+=gaitForward*travel*span;gaitTarget.y+=footLift-bodyLift*ground+.013*walk;
+   gaitDirection.copy(gaitTarget).sub(hip);const length=clamp(gaitDirection.length(),Math.abs(upperLength-lowerLength)+.001,(upperLength+lowerLength)*.997);gaitDirection.normalize();
+   const along=(upperLength*upperLength-lowerLength*lowerLength+length*length)/(2*length),bend=Math.sqrt(Math.max(0,upperLength*upperLength-along*along));
+   gaitBend.set(side*.09,0,1);gaitBend.addScaledVector(gaitDirection,-gaitBend.dot(gaitDirection)).normalize();
+   gaitKnee.copy(gaitDirection).multiplyScalar(along).addScaledVector(gaitBend,bend);
+   gaitGround1.copy(gaitKnee).normalize();gaitGround2.copy(gaitDirection).multiplyScalar(length).sub(gaitKnee).normalize();
+   const jumpAngle=i===0?-.44:.22,swimAngle=Math.sin(stroke+i*Math.PI)*.32;
+   gaitLeg1.set(side*.045,-1,0).applyAxisAngle(gaitAxis,jumpAngle*air+swimAngle*swimming).normalize();
+   gaitLeg2.set(side*.025,-1,0).applyAxisAngle(gaitAxis,(jumpAngle+.65)*air+(swimAngle+.43)*swimming).normalize();
+   gaitLeg1.lerp(gaitGround1,ground).normalize();gaitLeg2.lerp(gaitGround2,ground).normalize();
+   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,toe*ground+.13*air+.25*swimming);
+   // Arms oppose the planted leg; elbow flex and shoulder rotation increase during running.
+   const hit=i===0?0:gaitHit,block=i===0?clamp(guard,0,1):0,armSwing=travel*walk*(.27+.32*run)*gaitForward*ground-.34*air;
+   const upper=((armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block)*(1-swimming)+(-1.1+Math.sin(stroke+i*Math.PI)*1.05)*swimming;
+   gaitArm1.set(side*(.13+.035*run)*(1-block)+Math.sin(p)*.035*gaitSide,-1,.018).applyAxisAngle(gaitAxis,upper);
+   const elbow=.20+walk*.13+run*.45+hit*.48+block*.68;
+   gaitArm2.set(side*.055-block*.48,-1,.06).applyAxisAngle(gaitAxis,upper-elbow);
    const r=pair(a,a+1,a+2,gaitArm1,gaitArm2);if(!neutralHand[i])neutralHand[i]=r.clone();
   }
-  if(neutralFoot===null)neutralFoot=lowest;
-  const lift=(clamp(neutralFoot-lowest,-.16,.045)+walk*(.012+.018*run)*Math.cos(phase*2))*ground+(1-walk)*Math.sin(time*2.1)*.009;
-  bodyLift+=(lift-bodyLift)*blend;
-  leanX+=((walk*(.035+run*.10)*gaitForward+.035*air)-leanX)*relax;
-  leanZ+=((-gaitSide*walk*.09-gaitTurn*.018+Math.sin(phase)*walk*.032)*ground-leanZ)*relax;
-  twist+=((Math.sin(phase)*walk*(.035+run*.015)*ground-gaitTurn*.012)-twist)*blend;
-  body.rotation.set(leanX*(1-swimming)+.82*swimming,twist*(1-swimming),leanZ*(1-swimming)+Math.sin(stroke)*.09*swimming);gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
-  body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.018*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
  }
+
  animate();
  const offhand=new T.Group();bones[3].add(offhand);offhand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[0].clone().invert()));offhand.quaternion.copy(neutralHand[0].clone().invert());const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
  // Fit the garment to the same morphed mesh and bind it to the SAME skeleton.
