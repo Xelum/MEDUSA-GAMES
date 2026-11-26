@@ -52,23 +52,23 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const gaitLengths=jointPos.map((p,i)=>parents[i]>=0?p.distanceTo(jointPos[parents[i]]):0);
  function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
  let neutralHand=[],neutralFoot=null,gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
- function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0){
+ function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0,swim=0){
   dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-13*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
   gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-24*dt));
-  const walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),amp=walk*(.49+run*.23),air=gaitAir,ground=1-air;
+  const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2);const walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),amp=walk*(.49+run*.23),air=gaitAir,ground=1-air;
   let lowest=Infinity;
   for(let i=0;i<2;i++){
    const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,w=Math.sin(p),c=Math.cos(p);
-   const stride=(w+.09*Math.sin(p*2))*amp*gaitForward,legAngle=stride*ground+(i===0?-.46:.18)*air;
-   const knee=(.09+walk*(.10+Math.max(0,-c)*(.57+run*.35)))*ground+.57*air;
+   const stride=(w+.09*Math.sin(p*2))*amp*gaitForward,legAngle=(stride*ground+(i===0?-.46:.18)*air)*(1-swimming)+Math.sin(stroke+i*Math.PI)*.28*swimming;
+   const knee=((.09+walk*(.10+Math.max(0,-c)*(.57+run*.35)))*ground+.57*air)*(1-swimming)+.35*swimming;
    const sideSwing=-w*amp*.63*gaitSide*ground;
    gaitLeg1.set(side*.045+sideSwing,-1,0).applyAxisAngle(gaitAxis,legAngle);
    gaitLeg2.set(side*.02+sideSwing*.48,-1,0).applyAxisAngle(gaitAxis,legAngle+knee*(1-.38*Math.abs(gaitSide)));
    pair(l,l+1,l+2,gaitLeg1,gaitLeg2,legAngle*.14*ground+.16*air);
    lowest=Math.min(lowest,jointPos[l].y+gaitLeg1.y*gaitLengths[l+1]+gaitLeg2.y*gaitLengths[l+2]);
    const hit=i===0?0:gaitHit,armSwing=(-w*amp*(.74+run*.16)*gaitForward)*ground-.45*air;
-   const block=i===0?Math.max(0,Math.min(1,guard)):0;const upper=(armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block;
+   const block=i===0?Math.max(0,Math.min(1,guard)):0;const upper=((armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block)*(1-swimming)+(-1.1+Math.sin(stroke+i*Math.PI)*1.05)*swimming;
    gaitArm1.set(side*(.19+.045*walk)*(1-block)+w*.04*gaitSide,-1,.025).applyAxisAngle(gaitAxis,upper);
    gaitArm2.set(side*.055-block*.48,-1,.10).applyAxisAngle(gaitAxis,upper-(.16+walk*(.19+run*.33)+hit*.48+block*.68));
    const r=pair(a,a+1,a+2,gaitArm1,gaitArm2);if(!neutralHand[i])neutralHand[i]=r.clone();
@@ -79,7 +79,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   leanX+=((walk*(.035+run*.10)*gaitForward+.035*air)-leanX)*relax;
   leanZ+=((-gaitSide*walk*.09-gaitTurn*.018+Math.sin(phase)*walk*.032)*ground-leanZ)*relax;
   twist+=((Math.sin(phase)*walk*(.035+run*.015)*ground-gaitTurn*.012)-twist)*blend;
-  body.rotation.set(leanX,twist,leanZ);gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
+  body.rotation.set(leanX*(1-swimming)+.82*swimming,twist*(1-swimming),leanZ*(1-swimming)+Math.sin(stroke)*.09*swimming);gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
   body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.018*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
  }
  animate();
