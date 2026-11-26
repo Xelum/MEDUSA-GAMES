@@ -52,7 +52,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const gaitLengths=jointPos.map((p,i)=>parents[i]>=0?p.distanceTo(jointPos[parents[i]]):0);
  function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
  let neutralHand=[],neutralFoot=null,gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
- function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0){
+ function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0){
   dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-13*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
   gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-24*dt));
@@ -68,9 +68,9 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
    pair(l,l+1,l+2,gaitLeg1,gaitLeg2,legAngle*.14*ground+.16*air);
    lowest=Math.min(lowest,jointPos[l].y+gaitLeg1.y*gaitLengths[l+1]+gaitLeg2.y*gaitLengths[l+2]);
    const hit=i===0?0:gaitHit,armSwing=(-w*amp*(.74+run*.16)*gaitForward)*ground-.45*air;
-   const upper=armSwing*(1-hit)-1.4*hit;
-   gaitArm1.set(side*(.19+.045*walk)+w*.04*gaitSide,-1,.025).applyAxisAngle(gaitAxis,upper);
-   gaitArm2.set(side*.055,-1,.10).applyAxisAngle(gaitAxis,upper-(.16+walk*(.19+run*.33)+hit*.48));
+   const block=i===0?Math.max(0,Math.min(1,guard)):0;const upper=(armSwing*(1-hit)-1.4*hit)*(1-block)-1.08*block;
+   gaitArm1.set(side*(.19+.045*walk)*(1-block)+w*.04*gaitSide,-1,.025).applyAxisAngle(gaitAxis,upper);
+   gaitArm2.set(side*.055-block*.48,-1,.10).applyAxisAngle(gaitAxis,upper-(.16+walk*(.19+run*.33)+hit*.48+block*.68));
    const r=pair(a,a+1,a+2,gaitArm1,gaitArm2);if(!neutralHand[i])neutralHand[i]=r.clone();
   }
   if(neutralFoot===null)neutralFoot=lowest;
@@ -83,7 +83,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.018*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
  }
  animate();
- const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
+ const offhand=new T.Group();bones[3].add(offhand);offhand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[0].clone().invert()));offhand.quaternion.copy(neutralHand[0].clone().invert());const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
  // Fit the garment to the same morphed mesh and bind it to the SAME skeleton.
  function add(p,g,m,x=0,y=0,z=0){ownG.push(g);const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;p.add(o);return o}
  function skinned(name,pos,uvs,indices,weights,materials,groups=null){
@@ -161,5 +161,5 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  smoothOverlay((x,y,z)=>{const ax=Math.abs(x),base=z-.8,cheek=Math.min(y-7.56,8.54-y,.11-Math.abs(ax-(.43+(y-8)*.12)));let field=cheek;if(kind===1)field=Math.min(x,y-7.56,8.54-y,.06-Math.abs(x-(.38+(y-8)*.25)));if(kind===4)field=Math.min(cheek,8.08-y);if(kind===5)field=Math.min(.10-Math.abs(y-8.15),.84-ax);if(kind===6)field=Math.min(.20-Math.abs(ax-.49),y-7.75,8.29-y);if(kind===7)field=Math.min(x,.06-Math.abs(x-(.39+(y-8.38)*.25)),y-8.14,8.64-y);if(kind===8)field=Math.min(.23-Math.abs(ax-.49),Math.max(.045-Math.abs(y-7.85),.045-Math.abs(y-8.02)));if(kind===9)field=Math.min(y-8.34,8.73-y,Math.max(.045-Math.abs(x),.045-Math.abs(Math.abs(x)-(y-8.34)*.58)));return Math.min(base,field)},m,()=>.0018,undefined,'Fitted face marking')
  }
 
- return {body,arms:[bones[1],bones[4]],legs:[bones[7],bones[10]],hand,skinMat,mesh,skeleton,attachments,animate,dispose(){for(const g of ownG)g.dispose();for(const m of ownM)m.dispose();skeleton.dispose()}};
+ return {body,arms:[bones[1],bones[4]],legs:[bones[7],bones[10]],hand,offhand,skinMat,mesh,skeleton,attachments,animate,dispose(){for(const g of ownG)g.dispose();for(const m of ownM)m.dispose();skeleton.dispose()}};
 }
