@@ -27,13 +27,13 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   colors.push(shade.r,shade.g,shade.b);
  }
  function mat(color,kind,extra={}){const m=visuals.material(color,kind,extra);ownM.push(m);return m}
- const attachments=[];const skinMat=mat(skin,'skin',{roughness:.86,bumpScale:.0009,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.91,bumpScale:.006}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.93,bumpScale:.002}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.93,bumpScale:.002});ownM.push(metal);
+ const attachments=[];const skinMat=mat(skin,'skin',{roughness:.86,map:null,bumpScale:.0009,vertexColors:true}),leather=mat(OUTFITS[style]||0x634329,'cloth',{roughness:.91,bumpScale:.006}),dark=mat(0x352b23,'cloth',{bumpScale:.012}),linen=mat([0x6a6e4e,0x635e50,0x6b5639,0x77483d][style]||0x6a6e4e,'cloth',{bumpScale:.009}),fur=mat(0x75634e,'bark',{bumpScale:.022}),metal=new T.MeshStandardMaterial({color:0x9d8658,metalness:.58,roughness:.62}),hairMat=mat(hair,'bark',{roughness:.93,bumpScale:.002}),hairLight=mat(new T.Color(hair).lerp(new T.Color(0x927b5b),.18),'bark',{roughness:.93,bumpScale:.002});ownM.push(metal);
  const geometry=new T.BufferGeometry();ownG.push(geometry);geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(bi),4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(Float32Array.from(bw,x=>x/255),4));
  // Assign clothing directly to the continuous mesh, so the body remains covered even during movement.
  const bins=Array.from({length:5},()=>[]);
  function armWeight(i){let n=0;for(let j=0;j<4;j++)if(bi[i*4+j]>=1&&bi[i*4+j]<=6)n+=bw[i*4+j]/255;return n}
  for(let j=0;j<tri.length;j+=3){const ids=[tri[j],tri[j+1],tri[j+2]],v=ids.map(i=>raw[i]),x=v.reduce((s,p)=>s+Math.abs(p[0]),0)/3,y=v.reduce((s,p)=>s+p[1],0)/3,a=ids.reduce((s,i)=>s+armWeight(i),0)/3;let k=0;
-  if(a<.48&&y<2.3&&y>-1.7)k=1;
+  if(a<.48&&y<2.3&&y>-4.7)k=1;
   if(eq.tunic&&((a<.55&&y>=1.45&&y<6.48)||(a>.45&&y>4.95)))k=3;
   if(eq.wintercoat&&a<.62&&y>=1.45&&y<6.53)k=4;
   if(eq.boots&&a<.3&&y< -5.2)k=2;
@@ -53,7 +53,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
  // Two-bone leg IK: a planted foot sweeps backward, then lifts and returns forward.
  const gaitTarget=V(),gaitDirection=V(),gaitBend=V(),gaitKnee=V(),gaitGround1=V(),gaitGround2=V(),gaitBodyInv=Q(),gaitFootQ=Q();
- let neutralHand=[],gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
+ const gaitFeet=[{},{}];let neutralHand=[],gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
  function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0,guard=0,swim=0){
   dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-14*dt),relax=1-Math.exp(-8*dt);
   gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
@@ -61,7 +61,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
   const swimming=clamp(swim,0,1),stroke=time*(speed>.2?5.5:2.2),walk=clamp(gaitSpeed/2.65,0,1),run=clamp((gaitSpeed-2.65)/3.05,0,1),air=gaitAir,ground=(1-air)*(1-swimming);
   const stance=.60-.13*run,span=(.51+.105*run)*walk,legLift=(.105+.14*run)*walk;
   // Match a human stride: foot centers beneath the hips, no wide A-pose.
-  const feet=[];
+  const feet=gaitFeet;
   let pelvisDrop=0;
   for(let i=0;i<2;i++){
    const side=i===0?1:-1,l=i===0?7:10,u=((phase/TAU+i*.5)%1+1)%1;
@@ -72,7 +72,7 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
    const lateral=clamp(-gaitSide*travel*span*.45,-.08,.08),x=side*Math.max(.095,width+side*lateral),z=ankle.z+gaitForward*travel*span,y=ankle.y+footLift;
    const reach=Math.hypot(x-hip.x,z-hip.z),vertical=Math.sqrt(Math.max(.04,(len*.993)**2-reach**2));
    pelvisDrop=Math.max(pelvisDrop,hip.y-y-vertical);
-   feet.push({travel,footLift,toe,x,y,z});
+   const foot=feet[i];foot.travel=travel;foot.footLift=footLift;foot.toe=toe;foot.x=x;foot.y=y;foot.z=z;
   }
   const lift=(-Math.max(0,pelvisDrop)-.007*walk)*ground+(1-walk)*Math.sin(time*2.1)*.003;
   bodyLift+=(lift-bodyLift)*(1-Math.exp(-22*dt));
