@@ -27,12 +27,12 @@ const ROUTES=[
 function cat(a,b,c,d,t){return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)}
 export function createLandscape(legacyHeight,waterDist,protectedPoints){
  const routes=ROUTES.map((r,ri)=>{const points=[];for(let j=0;j<r.points.length-1;j++){const a=r.points[Math.max(0,j-1)],b=r.points[j],c=r.points[j+1],d=r.points[Math.min(r.points.length-1,j+2)],n=Math.ceil(Math.hypot(c[0]-b[0],c[1]-b[1])/2);for(let i=0;i<n;i++){const t=i/n;points.push({x:cat(a[0],b[0],c[0],d[0],t),z:cat(a[1],b[1],c[1],d[1],t),y:lerp(r.level[j],r.level[j+1],smooth(t)),w:r.width*(.86+.18*Math.sin((j+t)*1.7+ri))})}}const p=r.points.at(-1);points.push({x:p[0],z:p[1],y:r.level.at(-1),w:r.width});return{...r,points}});
- const buckets=new Map(),K=32;for(const r of routes)for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],pad=16;for(let z=Math.floor((Math.min(a.z,b.z)-pad)/K);z<=Math.floor((Math.max(a.z,b.z)+pad)/K);z++)for(let x=Math.floor((Math.min(a.x,b.x)-pad)/K);x<=Math.floor((Math.max(a.x,b.x)+pad)/K);x++){const key=x+','+z;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push([a,b])}}
+ const buckets=new Map(),K=32;for(const r of routes)for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],pad=34;for(let z=Math.floor((Math.min(a.z,b.z)-pad)/K);z<=Math.floor((Math.max(a.z,b.z)+pad)/K);z++)for(let x=Math.floor((Math.min(a.x,b.x)-pad)/K);x<=Math.floor((Math.max(a.x,b.x)+pad)/K);x++){const key=x+','+z;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push([a,b])}}
  function river(x,z){let best=null,bd=Infinity;for(const [a,b] of buckets.get(Math.floor(x/K)+','+Math.floor(z/K))||[]){const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz||1))),d=Math.hypot(x-a.x-dx*t,z-a.z-dz*t);if(d<bd){bd=d;best={d,w:lerp(a.w,b.w,t),y:lerp(a.y,b.y,t)}}}return best}
  function terrain(x,z){let y=legacyHeight(x,z),rise=0;for(const m of HIGHLANDS){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.angle),s=Math.sin(m.angle),u=(dx*c+dz*s)/m.rx,v=(-dx*s+dz*c)/m.rz,r=Math.hypot(u,v)*(1+.10*Math.sin(u*7+v*4)+.055*Math.cos(v*9-u*5));if(r>=1)continue;const t=1-smooth((r-m.flat)/(1-m.flat));rise+=m.h*t*(.95+.05*Math.sin(u*5-v*3))}
  let fade=1;for(const p of protectedPoints){const d=Math.hypot(x-p.x,z-p.z);if(d<p.r+22)fade=Math.min(fade,smooth((d-p.r)/22))}y+=rise*fade*smooth((waterDist(x,z)-24)/16);
  for(const p of NEW_CAVES){const d=Math.hypot(x-p.x,z-p.z);if(d<p.r+10)y=lerp(y,legacyHeight(p.x,p.z),1-smooth((d-p.r)/10))}
- const r=river(x,z);if(r){const bank=smooth((r.d-r.w*.96)/Math.max(5,r.w*1.0));const bed=r.y-.85-(1-smooth(r.d/r.w))*.7;y=lerp(bed,y,bank)}
+ const r=river(x,z);if(r){const bank=smooth((r.d-r.w*.96)/Math.min(24,Math.max(9,Math.abs(y-r.y)*.9)));const bed=r.y-.85-(1-smooth(r.d/r.w))*.7;y=lerp(bed,y,bank)}
  return y}
  return {routes,river,terrain,wet(x,z,pad=0){const r=river(x,z);return !!r&&r.d<r.w+pad},near(x,z){const r=river(x,z);return r&&r.d<r.w+2}};
 }
