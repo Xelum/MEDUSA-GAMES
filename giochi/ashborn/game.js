@@ -312,7 +312,7 @@ function updateBuild(){
   if(!dry(b.x,b.z)){plan.ok=false;plan.reason='Terreno sommerso'}
   const elevated=b.y>walkHeight(s.x,s.z)+1.8;
   if(!elevated&&['wall','window','door','fence','bench','post','firebowl','chest','wardrobe','bed','campfire'].includes(b.kind)&&footprint(b,s.x,s.z,...({wall:[1.025,.11],window:[1,.12],door:[1,.12],fence:[1,.10],bench:[.86,.62],post:[.18,.18],firebowl:[.58,.58],chest:[.47,.32],wardrobe:[.78,.46],bed:[.73,.98],campfire:[.63,.63]}[b.kind]),.28)){plan.ok=false;plan.reason='Allontanati dal pezzo'}
-  if(!snap&&resources.some(r=>r.g.visible&&['wood','oak','stone','log'].includes(r.kind)&&Math.hypot(b.x-r.x,b.z-r.z)<1.05+(r.solid||0))){plan.ok=false;plan.reason='Rimuovi la risorsa prima di costruire'}
+  if(resources.some(r=>r.g.visible&&['wood','oak','stone','log'].includes(r.kind)&&Math.hypot(b.x-r.x,b.z-r.z)<1.05+(r.solid||0))){plan.ok=false;plan.reason='Rimuovi la risorsa prima di costruire'}
   if(!ghost||ghostKind!==buildKind){if(ghost)scene.remove(ghost.g);ghost=pieceModel(b,true);ghostKind=buildKind}
   ghost.g.visible=true;ghost.g.position.set(b.x,b.y,b.z);ghost.g.rotation.y=b.rot*Math.PI/2;ghost.g.traverse(m=>{if(m.isMesh)m.material=ghostMaterials[plan.ok?0:1]})
  }
