@@ -25,11 +25,11 @@ export function terrainArt(T,mat,coarse){
  float ashRock=smoothstep(.12,.43,1.-vAshSlope+ashMacro.r*.16);
  float ashSoil=smoothstep(.52,.73,ashMacro.r+ashMicro.r*.13)*(1.-ashDesert)*(1.-ashSnow)*(1.-ashRock);
  float ashPath=smoothstep(.68,.83,ashMacro.a)*smoothstep(.42,.62,ashMacro.r)*.36;
- vec3 ashGrass=diffuseColor.rgb*mix(.62,1.28,ashMacro.r)*mix(.77,1.19,ashMicro.g);
- ashGrass*=mix(vec3(1.0),vec3(.70,1.06,.81),ashForest*.73);
+ vec3 ashGrass=diffuseColor.rgb*mix(.70,1.32,ashMacro.r)*mix(.83,1.21,ashMicro.g);
+ ashGrass*=mix(vec3(1.0),vec3(.76,1.13,.82),ashForest*.73);
  ashGrass*=mix(.82,1.18,ashFine.g);
  float mossPatch=smoothstep(.43,.78,ashMacro.b+ashMicro.r*.19)*ashForest;
- ashGrass=mix(ashGrass,vec3(.09,.17,.065)*mix(.66,1.25,ashMicro.g),mossPatch*.50);
+ ashGrass=mix(ashGrass,vec3(.11,.23,.065)*mix(.66,1.25,ashMicro.g),mossPatch*.42);
  vec3 ashEarth=mix(vec3(.16,.105,.057),vec3(.058,.087,.042),ashMoss)*mix(.61,1.36,ashMicro.r)*mix(.88,1.15,ashFine.g);
  vec3 ashStone=mix(vec3(.14,.16,.135),vec3(.34,.37,.37),ashMicro.b)*mix(.71,1.18,ashMacro.g);
  ashStone=mix(ashStone,vec3(.075,.14,.06),ashForest*smoothstep(.54,.82,ashFine.r)*.36);
@@ -41,7 +41,7 @@ export function terrainArt(T,mat,coarse){
  ashColor=mix(ashColor,ashSand,ashDesert*.91);
  ashColor=mix(ashColor,ashIce,ashSnow*smoothstep(.16,.51,ashMacro.r+vAshGround.y*.012));
  ashColor=mix(ashColor,ashStone,ashRock*(1.-ashDesert*.58));
- diffuseColor.rgb=ashColor*(1.-ashWet*.21*(1.-ashSnow));
+ diffuseColor.rgb=ashColor*(1.-ashWet*.17*(1.-ashSnow));
  `).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.48,ashWet*.5);');
  };mat.customProgramCacheKey=()=> 'ashborn-terrain-30';return {update(w,d){wet.value=w;sun.value=d},texture:tex}
 }
