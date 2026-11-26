@@ -67,33 +67,49 @@ export const isCover=k=>['roof','slopedroof','beam'].includes(k);
 export const WALL_HEIGHT=2.16;
 export const isStackWall=k=>['wall','door','window'].includes(k);
 export const wallTop=b=>b.y+WALL_HEIGHT;
+// Rotation is stored in quarter-turn units, now fractional. Legacy saves retain their angles.
+export const normalizeRotation=r=>((r%4)+4)%4;
+export function localPoint(b,x,z){const a=b.rot*Math.PI/2,c=Math.cos(a),s=Math.sin(a),dx=x-b.x,dz=z-b.z;return{x:c*dx-s*dz,z:s*dx+c*dz}}
+export function footprint(b,x,z,hx=1,hz=1,pad=0){const p=localPoint(b,x,z);return Math.abs(p.x)<hx+pad&&Math.abs(p.z)<hz+pad}
+export function offsetPiece(b,x,z){const a=b.rot*Math.PI/2,c=Math.cos(a),s=Math.sin(a);return{x:b.x+c*x+s*z,z:b.z-s*x+c*z}}
+const dims={wall:[1.025,.11,0,2.16],door:[1,.12,0,2.16],window:[1,.12,0,2.16],fence:[1,.10,0,1.25],floor:[1,1,-.12,.12],stonebase:[1,1,-.46,.13],roof:[1.08,1.08,-.16,.09],slopedroof:[1.04,1.2,-.12,1.25],beam:[1.06,.12,-.12,.12],post:[.18,.18,0,2.4],bed:[.73,.98,0,1.08],wardrobe:[.78,.46,0,2.2],chest:[.47,.32,0,.78],bench:[.86,.62,0,1.8],campfire:[.63,.63,0,.85],firebowl:[.58,.58,0,.9],stairs:[1,1,0,1.2],ramp:[1,1,0,.65],sapling:[.18,.18,0,.6]};
+export function pieceBounds(b){return dims[b.kind]||[.5,.5,0,1]}
+export function overlapPieces(a,b,margin=.035){const A=pieceBounds(a),B=pieceBounds(b);if(a.y+A[3]<=b.y+B[2]+margin||b.y+B[3]<=a.y+A[2]+margin)return false;
+ const axes=o=>{const t=o.rot*Math.PI/2;return [[Math.cos(t),-Math.sin(t)],[Math.sin(t),Math.cos(t)]]},u=axes(a),v=axes(b),dx=b.x-a.x,dz=b.z-a.z;
+ for(const axis of [...u,...v]){const dot=k=>Math.abs(axis[0]*k[0]+axis[1]*k[1]);if(Math.abs(dx*axis[0]+dz*axis[1])>=A[0]*dot(u[0])+A[1]*dot(u[1])+B[0]*dot(v[0])+B[1]*dot(v[1])-margin)return false}return true
+}
+export function snapPlacement(s,kind,x,z,rot,target,y){
+ if(!target)return{x,z,rot};
+ if(isFloor(target.kind)&&isEdge(kind)){const p=localPoint(target,x,z),side=Math.abs(p.x)>Math.abs(p.z);const q=offsetPiece(target,side?Math.sign(p.x||1):0,side?0:Math.sign(p.z||1));return{...q,rot:normalizeRotation(target.rot+(side?1:0)),supportId:target.id}}
+ if(isFloor(target.kind)&&isFloor(kind)){const p=localPoint(target,x,z),side=Math.abs(p.x)>Math.abs(p.z);const q=offsetPiece(target,side?2*Math.sign(p.x||1):0,side?0:2*Math.sign(p.z||1));return{...q,rot:target.rot,supportId:target.id}}
+ if(isStackWall(target.kind)&&target.kind!=='door'&&isStackWall(kind)&&y>=target.y+1.08)return{x:target.x,z:target.z,rot:target.rot,supportId:target.id};
+ if(isCover(kind)&&isFloor(target.kind))return{x:target.x,z:target.z,rot:target.rot,supportId:target.id};
+ if(isCover(kind)&&isStackWall(target.kind)&&y>=target.y+1.08){const floors=s.buildings.filter(b=>isFloor(b.kind)&&Math.hypot(b.x-target.x,b.z-target.z)<1.65).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z));if(floors.length)return{x:floors[0].x,z:floors[0].z,rot:floors[0].rot,supportId:target.id}}
+ return{x,z,rot}
+}
 export function planPiece(s,kind,x,z,rot,ground,dry=true,snap=null){
- const p=PIECES[kind];if(!p)return {ok:false,reason:'Pezzo sconosciuto'};
- rot=((Math.round(rot)%4)+4)%4;const edge=isEdge(kind);let cx=cell(x),cz=cell(z);
- if(edge){if(rot%2)cx=cell(x-1)+1;else cz=cell(z-1)+1;const candidates=[];for(const f of s.buildings.filter(b=>isFloor(b.kind)))for(const sign of [-1,1]){const q={x:f.x+(rot%2?sign:0),z:f.z+(rot%2?0:sign)};const d=Math.hypot(q.x-x,q.z-z);if(d<1.8)candidates.push({...q,d})}candidates.sort((a,b)=>a.d-b.d);if(candidates[0]){cx=candidates[0].x;cz=candidates[0].z}}
- const support=snap?.supportId!=null?s.buildings.find(b=>b.id===snap.supportId&&isStackWall(b.kind)):null;
- const stacked=isStackWall(kind)&&support&&support.kind!=='door';
- if(stacked){cx=support.x;cz=support.z;rot=support.rot}
- const floor=s.buildings.find(b=>isFloor(b.kind)&&b.x===cx&&b.z===cz),adj=edge?s.buildings.filter(b=>isFloor(b.kind)&&(rot%2?b.z===cz&&Math.abs(b.x-cx)===1:b.x===cx&&Math.abs(b.z-cz)===1)):[],base=floor||adj[0];
- const neighbor=s.buildings.find(b=>isFloor(b.kind)&&Math.abs(b.x-cx)+Math.abs(b.z-cz)===2);const baseY=isFloor(kind)?(neighbor?neighbor.y:ground(cx,cz)+.12):['roof','slopedroof','beam'].includes(kind)?(floor?.y??ground(cx,cz))+2.4:base?base.y+.14:ground(cx,cz);
- const elevatedCover=isCover(kind)&&support&&floor&&Math.abs(support.x-cx)+Math.abs(support.z-cz)===1;
- const y=stacked?wallTop(support):elevatedCover?wallTop(support)+.10:baseY;
- const b={kind,x:cx,y,z:cz,rot};let reason='';
- if(!dry||Math.abs(cx)>LIMIT||Math.abs(cz)>LIMIT)reason='Terreno non valido';
- else if(Math.hypot(s.x-cx,s.z-cz)>7)reason='Troppo lontano';
- else if(Math.hypot(s.x-cx,s.z-cz,Math.max(0,y-ground(s.x,s.z)-1.4))>7.5)reason='Pezzo troppo alto o lontano';
- else if(s.buildings.length>=450)reason='Limite costruzioni raggiunto';
- else if(isFloor(kind)&&neighbor&&Math.abs(neighbor.y-ground(cx,cz))>1.15)reason='Terreno troppo irregolare';
- else if(isStackWall(kind)&&!stacked&&!adj.length)reason='Serve un pavimento adiacente';
- else if(['roof','slopedroof','beam'].includes(kind)&&!floor)reason='Serve un pavimento sotto il tetto';
- else if(['roof','slopedroof','beam'].includes(kind)&&!s.buildings.some(q=>(['wall','door','window'].includes(q.kind)&&Math.abs(q.x-cx)+Math.abs(q.z-cz)===1)||(q.kind==='post'&&q.x===cx&&q.z===cz)))reason='Serve una parete o una porta di sostegno';
- else if(s.buildings.some(q=>q.x===cx&&q.z===cz&&Math.abs(q.y-y)<.55&&(q.kind===kind||edge&&isEdge(q.kind)||isFloor(kind)&&isFloor(q.kind)||['roof','slopedroof'].includes(kind)&&['roof','slopedroof'].includes(q.kind)||['bench','firebowl','post','chest','bed','wardrobe','campfire'].includes(kind)&&['bench','firebowl','post','chest','bed','wardrobe','campfire'].includes(q.kind))))reason='Spazio occupato';
+ const p=kind==='sapling'?{cost:{sapling:1}}:PIECES[kind];if(!p||![x,z,rot].every(Number.isFinite))return{ok:false,reason:'Posizione non valida'};
+ rot=normalizeRotation(rot);const support=snap?.supportId!=null?s.buildings.find(b=>b.id===snap.supportId):null;
+ const stacked=isStackWall(kind)&&support&&isStackWall(support.kind)&&support.kind!=='door';
+ const floor=s.buildings.filter(b=>isFloor(b.kind)&&footprint(b,x,z,1.04,1.04)).sort((a,b)=>b.y-a.y)[0];
+ const base=isFloor(kind)?(support&&isFloor(support.kind)?support.y:ground(x,z)+.12):floor?floor.y+.14:ground(x,z);
+ const covers=isCover(kind),supports=covers?s.buildings.filter(b=>(isStackWall(b.kind)||b.kind==='post')&&Math.hypot(b.x-x,b.z-z)<=1.75&&b.y>=base-1&&b.y<=base+.65):[];
+ const elevated=covers&&support&&isStackWall(support.kind);
+ const y=stacked?wallTop(support):elevated?wallTop(support)+.10:covers?(supports.length?Math.max(...supports.map(b=>b.y+(b.kind==='post'?2.4:2.16)))+.10:base+2.3):base;
+ const b={kind,x,y,z,rot,...(support?{supportId:support.id}:floor&&!isFloor(kind)?{supportId:floor.id}:{})};let reason='';
+ if(!dry||Math.abs(x)>LIMIT||Math.abs(z)>LIMIT)reason='Terreno non valido';
+ else if(Math.hypot(s.x-x,s.z-z,Math.max(0,y-ground(s.x,s.z)-1.4))>7.5||Math.hypot(s.x-x,s.z-z)>7)reason='Troppo lontano';
+ else if(kind!=='sapling'&&s.buildings.length>=450)reason='Limite costruzioni raggiunto';
+ else if(kind==='sapling'&&(floor||s.planted.length>=180))reason='Serve terreno libero';
+ else if(isFloor(kind)&&support&&isFloor(support.kind)&&Math.abs(y-ground(x,z))>1.15)reason='Terreno troppo irregolare';
+ else if(covers&&!supports.length&&!elevated)reason='Serve una parete o un palo di sostegno';
+ else if(s.buildings.some(q=>overlapPieces(b,q)&&!(isEdge(kind)&&isEdge(q.kind)&&Math.hypot(x-q.x,z-q.z)>.8&&Math.hypot(x-q.x,z-q.z)<1.6&&Math.abs(Math.sin((rot-q.rot)*Math.PI/2))>.7)))reason='Spazio occupato';
  else if(!(['bench','chest','wardrobe','campfire'].includes(kind)&&s.inventory[kind]>0)&&!has(s,p.cost))reason='Materiali insufficienti';
- return {ok:!reason,reason,piece:b};
+ return{ok:!reason,reason,piece:b}
 }
 export function placePiece(s,plan){if(!plan?.ok||!PIECES[plan.piece.kind])return null;const packed=['bench','chest','wardrobe','campfire'].includes(plan.piece.kind)&&s.inventory[plan.piece.kind]>0;if(!packed&&!has(s,PIECES[plan.piece.kind].cost))return null;const b={...plan.piece,id:s.nextBuildId++,open:false};if(packed)take(s,b.kind);else for(const [k,n] of Object.entries(PIECES[b.kind].cost))take(s,k,n);s.buildings.push(b);return b}
-export function upperWallDepends(s,b){return isStackWall(b.kind)&&s.buildings.some(q=>isStackWall(q.kind)&&q.x===b.x&&q.z===b.z&&q.rot%2===b.rot%2&&Math.abs(q.y-wallTop(b))<.12)}
-export function removePiece(s,id){const i=s.buildings.findIndex(b=>b.id===id);if(i<0)return false;const b=s.buildings[i];if(upperWallDepends(s,b))return false;s.buildings.splice(i,1);for(const [k,n] of Object.entries(PIECES[b.kind].cost))add(s,k,n);return true}
+export function upperWallDepends(s,b){return isStackWall(b.kind)&&s.buildings.some(q=>isStackWall(q.kind)&&(q.supportId===b.id||Math.hypot(q.x-b.x,q.z-b.z)<.08&&Math.abs(Math.sin((q.rot-b.rot)*Math.PI/2))<.02&&Math.abs(q.y-wallTop(b))<.12))}
+export function removePiece(s,id){const i=s.buildings.findIndex(b=>b.id===id);if(i<0)return false;const b=s.buildings[i];if(upperWallDepends(s,b)||s.buildings.some(q=>q.supportId===b.id))return false;s.buildings.splice(i,1);for(const [k,n] of Object.entries(PIECES[b.kind].cost))add(s,k,n);return true}
 
 export function jumpStep(y,v,dt){const speed=v-14*dt,next=y+speed*dt;return next<=0?{y:0,v:0}:{y:next,v:speed}}
 export function biomeWeights(x,z){const wx=x+36*Math.sin(z*.016)+23*Math.sin((x+z)*.031),wz=z+42*Math.sin(x*.013)-18*Math.cos((x-z)*.027);const sites=[[0,0],[-275,-45],[265,35],[20,-310],[-25,300],[-355,260],[350,-250],[320,330],[-300,-340]],types=[0,1,2,3,4,4,2,1,3];const d=Array(5).fill(Infinity);for(let i=0;i<sites.length;i++)d[types[i]]=Math.min(d[types[i]],Math.hypot(wx-sites[i][0],wz-sites[i][1])+(types[i]===0?0:20));const min=Math.min(...d),weights=d.map(v=>Math.exp(-(v-min)/22)),sum=weights.reduce((a,b)=>a+b,0);return weights.map(v=>v/sum)}
