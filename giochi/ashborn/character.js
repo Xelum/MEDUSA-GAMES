@@ -46,18 +46,41 @@ export function createCharacter(T,visuals,ch,eq,root,skin,hair){
  const bones=[],jointNames=[null,'l-shoulder','l-elbow','l-hand','r-shoulder','r-elbow','r-hand','l-upper-leg','l-knee','l-ankle','r-upper-leg','r-knee','r-ankle'],parents=[-1,0,1,2,0,4,5,0,7,8,0,10,11],jointPos=jointNames.map(n=>n?source(...D.joints[n].p.map((x,i)=>x+D.joints[n].d[i]*muscle)):V());
  for(let i=0;i<13;i++){const b=new T.Bone();b.name=D.bones[i];b.position.copy(jointPos[i]);if(parents[i]>=0){b.position.sub(jointPos[parents[i]]);bones[parents[i]].add(b)}else mesh.add(b);bones.push(b)}
  root.updateMatrixWorld(true);const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);
- // Natural standing pose, with independent upper and lower limbs.
- function absRotation(i,child,desired){return Q().setFromUnitVectors(jointPos[child].clone().sub(jointPos[i]).normalize(),desired.normalize())}
- function pair(i,j,k,d1,d2,tip=null){const a=absRotation(i,j,d1),b=absRotation(j,k,d2);bones[i].quaternion.copy(a);bones[j].quaternion.copy(a.clone().invert().multiply(b));bones[k].quaternion.copy(tip?b.clone().invert().multiply(tip):Q());return b}
- let neutralHand=[],neutralFoot=null;
- function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1){const walk=clamp(speed/3.6,0,1),run=clamp((speed-3.6)/3.2,0,1),amp=walk*(.42+run*.23);let lowest=Infinity;
-  for(let i=0;i<2;i++){const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,w=Math.sin(phase+i*Math.PI),c=Math.cos(phase+i*Math.PI),legAngle=jumping?(i===0?-.5:.24):w*amp*forward,armAngle=jumping?-.48:-w*amp*.78*forward,hit=i===0?0:attack,upper=hit>0?-1.4*hit:armAngle;
-   const sideSwing=jumping?0:-w*amp*.78*strafe,leg1=V(side*.042+sideSwing,-1,0).applyQuaternion(qx(legAngle)),leg2=V(side*.02+sideSwing*.65,-1,0).applyQuaternion(qx(legAngle+(!jumping?Math.max(0,-c)*walk*(.52+run*.25)*(1-.55*Math.abs(strafe)):.57)));
-   pair(l,l+1,l+2,leg1,leg2,qx(jumping?.16:legAngle*.18));const footY=jointPos[l].y+leg1.y*jointPos[l+1].distanceTo(jointPos[l])+leg2.y*jointPos[l+2].distanceTo(jointPos[l+1]);lowest=Math.min(lowest,footY);
-   const arm1=V(side*.20,-1,.02).applyQuaternion(qx(upper)),arm2=V(side*.055,-1,.10).applyQuaternion(qx(upper-(hit>0?.55*hit:.13+walk*.18)));
-   const r=pair(a,a+1,a+2,arm1,arm2);if(!neutralHand[i])neutralHand[i]=r.clone();
+ // Lightweight procedural locomotion: blended gait, softened foot contact and body weight.
+ const gaitRest=jointPos.map((p,i)=>parents[i]>=0?p.clone().sub(jointPos[parents[i]]).normalize():V());
+ const gaitA=Q(),gaitB=Q(),gaitInv=Q(),gaitTip=Q(),gaitAxis=V(1,0,0),gaitLeg1=V(),gaitLeg2=V(),gaitArm1=V(),gaitArm2=V(),gaitPivot=V(0,1.06,0),gaitOffset=V();
+ const gaitLengths=jointPos.map((p,i)=>parents[i]>=0?p.distanceTo(jointPos[parents[i]]):0);
+ function pair(i,j,k,d1,d2,tipAngle=null){gaitA.setFromUnitVectors(gaitRest[j],d1.normalize());gaitB.setFromUnitVectors(gaitRest[k],d2.normalize());bones[i].quaternion.copy(gaitA);bones[j].quaternion.copy(gaitInv.copy(gaitA).invert().multiply(gaitB));if(tipAngle===null)bones[k].quaternion.identity();else bones[k].quaternion.copy(gaitInv.copy(gaitB).invert().multiply(gaitTip.setFromAxisAngle(gaitAxis,tipAngle)));return gaitB}
+ let neutralHand=[],neutralFoot=null,gaitSpeed=0,gaitSide=0,gaitForward=1,gaitAir=0,gaitTurn=0,gaitHit=0,bodyLift=0,leanX=0,leanZ=0,twist=0;
+ function animate(phase=0,speed=0,jumping=false,attack=0,time=0,strafe=0,forward=1,dt=1/60,turn=0){
+  dt=clamp(Number.isFinite(dt)?dt:1/60,0,.05);const blend=1-Math.exp(-13*dt),relax=1-Math.exp(-8*dt);
+  gaitSpeed+=(clamp(speed,0,7)-gaitSpeed)*blend;gaitSide+=(clamp(strafe,-1,1)-gaitSide)*blend;gaitForward+=(clamp(forward,-1,1)-gaitForward)*blend;
+  gaitAir+=((jumping?1:0)-gaitAir)*blend;gaitTurn+=(clamp(turn,-5,5)-gaitTurn)*relax;gaitHit+=(clamp(attack,0,1)-gaitHit)*(1-Math.exp(-24*dt));
+  const walk=clamp(gaitSpeed/3.6,0,1),run=clamp((gaitSpeed-3.6)/3.2,0,1),amp=walk*(.49+run*.23),air=gaitAir,ground=1-air;
+  let lowest=Infinity;
+  for(let i=0;i<2;i++){
+   const side=i===0?1:-1,a=i===0?1:4,l=i===0?7:10,p=phase+i*Math.PI,w=Math.sin(p),c=Math.cos(p);
+   const stride=(w+.09*Math.sin(p*2))*amp*gaitForward,legAngle=stride*ground+(i===0?-.46:.18)*air;
+   const knee=(.09+walk*(.10+Math.max(0,-c)*(.57+run*.35)))*ground+.57*air;
+   const sideSwing=-w*amp*.63*gaitSide*ground;
+   gaitLeg1.set(side*.045+sideSwing,-1,0).applyAxisAngle(gaitAxis,legAngle);
+   gaitLeg2.set(side*.02+sideSwing*.48,-1,0).applyAxisAngle(gaitAxis,legAngle+knee*(1-.38*Math.abs(gaitSide)));
+   pair(l,l+1,l+2,gaitLeg1,gaitLeg2,legAngle*.14*ground+.16*air);
+   lowest=Math.min(lowest,jointPos[l].y+gaitLeg1.y*gaitLengths[l+1]+gaitLeg2.y*gaitLengths[l+2]);
+   const hit=i===0?0:gaitHit,armSwing=(-w*amp*(.74+run*.16)*gaitForward)*ground-.45*air;
+   const upper=armSwing*(1-hit)-1.4*hit;
+   gaitArm1.set(side*(.19+.045*walk)+w*.04*gaitSide,-1,.025).applyAxisAngle(gaitAxis,upper);
+   gaitArm2.set(side*.055,-1,.10).applyAxisAngle(gaitAxis,upper-(.16+walk*(.19+run*.33)+hit*.48));
+   const r=pair(a,a+1,a+2,gaitArm1,gaitArm2);if(!neutralHand[i])neutralHand[i]=r.clone();
   }
-  if(neutralFoot===null)neutralFoot=lowest;body.position.y=(jumping?0:clamp(neutralFoot-lowest,-.25,.035))+(1-walk)*Math.sin(time*2.1)*.006;
+  if(neutralFoot===null)neutralFoot=lowest;
+  const lift=(clamp(neutralFoot-lowest,-.16,.045)+walk*(.012+.018*run)*Math.cos(phase*2))*ground+(1-walk)*Math.sin(time*2.1)*.009;
+  bodyLift+=(lift-bodyLift)*blend;
+  leanX+=((walk*(.035+run*.10)*gaitForward+.035*air)-leanX)*relax;
+  leanZ+=((-gaitSide*walk*.09-gaitTurn*.018+Math.sin(phase)*walk*.032)*ground-leanZ)*relax;
+  twist+=((Math.sin(phase)*walk*(.035+run*.015)*ground-gaitTurn*.012)-twist)*blend;
+  body.rotation.set(leanX,twist,leanZ);gaitOffset.copy(gaitPivot).applyEuler(body.rotation);
+  body.position.set(gaitPivot.x-gaitOffset.x+Math.sin(phase)*walk*.018*ground,bodyLift+gaitPivot.y-gaitOffset.y,gaitPivot.z-gaitOffset.z);
  }
  animate();
  const hand=new T.Group();bones[6].add(hand);hand.position.copy(V(0,-.055,.025).applyQuaternion(neutralHand[1].clone().invert()));hand.quaternion.copy(neutralHand[1].clone().invert());
