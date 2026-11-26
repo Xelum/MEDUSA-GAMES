@@ -74,7 +74,7 @@ export function createEnvironment(T,scene,height,coarse){
   const storm=weather.storm,wind=weather.wind,night=1-day;
   const point=(i,speed,radius)=>{const a=i*2.399963+t*speed,r=radius*(.2+.8*hash(i,41));return[x+Math.cos(a)*r,z+Math.sin(a)*r]};
   let k=0;
-  const palette=[0xffe1a3,0xcdeaa0,0xffc582,0xa7e0ff,0xa6efad];
+  const palette=[0xffe8a3,0x8ce9df,0xffc582,0x9ddfff,0xb2f184];
   motes.m.uniforms.tint.value.set(palette[bi]||palette[0]);motes.m.uniforms.pixelScale.value=pixelScale;
   const radius=indoors?12:25,cell=indoors?6:12,range=Math.ceil(radius/cell),density=indoors?5:coarse?5:9;
   const nightGlow=.68+.32*night,baseX=Math.floor(x/cell),baseZ=Math.floor(z/cell);
@@ -93,7 +93,7 @@ export function createEnvironment(T,scene,height,coarse){
   }
   finish(motes,k);motes.g.attributes.moteSize.needsUpdate=motes.g.attributes.moteAlpha.needsUpdate=true;
   k=0;if(!indoors&&(bi===0||bi===1||bi===4)){leaves.m.color.set(bi===1?0x9a9a55:0xb8aa67);for(let i=0;i<leaves.max*(bi===1?1:.38);i++){const [xx,zz]=point(i,.024+wind*.065,19),yy=ground(xx,zz)+.25+fract(hash(i,8)-t*(.04+wind*.018))*4;put(leaves,k++,xx+.25*Math.sin(t+i),yy,zz, .6+.35*hash(i,4))}}finish(leaves,k);
-  k=0;if(!indoors){mist.m.opacity=[.032,.077,.040,.091,.110][bi]*(.7+.6*night+.5*storm);mist.m.color.set([0xc3d1c4,0xa3b8ab,0xe2c8a0,0xd8e3eb,0x92b09c][bi]);mist.m.size=bi===4?9:7;for(let i=0;i<mist.max;i++){const [xx,zz]=point(i,.008+wind*.006,33);put(mist,k++,xx,ground(xx,zz)+.7+hash(i,17)*.6,zz,.55+.4*hash(i,55))}}finish(mist,k);
+  k=0;if(!indoors){mist.m.opacity=[.032,.077,.040,.091,.110][bi]*(.7+.6*night+.5*storm);mist.m.color.set([0xd1dbbd,0x8bbcb7,0xe9c89e,0xc4d9ee,0x8eb9a0][bi]);mist.m.size=bi===4?9:7;for(let i=0;i<mist.max;i++){const [xx,zz]=point(i,.008+wind*.006,33);put(mist,k++,xx,ground(xx,zz)+.7+hash(i,17)*.6,zz,.55+.4*hash(i,55))}}finish(mist,k);
   k=0;if(!indoors&&bi===3){for(let i=0;i<snow.max*(.18+storm*.80);i++){const xx=x+(fract(hash(i,17)+t*.014*wind)-.5)*33,zz=z+(hash(i,21)-.5)*33,yy=ground(xx,zz)+fract(hash(i,93)-t*.063)*10;put(snow,k++,xx,yy,zz,.45+.55*hash(i,4))}}finish(snow,k);
   k=0;if(!indoors&&bi===2&&storm>.12){dust.m.opacity=.14+storm*.11;for(let i=0;i<dust.max*storm;i++){const xx=x+(fract(hash(i,14)+t*.045*wind)-.5)*36,zz=z+(hash(i,28)-.5)*28;put(dust,k++,xx,ground(xx,zz)+.18+hash(i,5)*1.7,zz,.6+.4*hash(i,31))}}finish(dust,k);
   let rc=0;if(!indoors&&bi!==2&&bi!==3&&storm>.35){rc=Math.floor(rainMax*storm);rm.opacity=.12+storm*.18;for(let i=0;i<rc;i++){const xx=x+(fract(hash(i,15)+t*.02*wind)-.5)*27,zz=z+(hash(i,23)-.5)*27,yy=ground(xx,zz)+fract(hash(i,94)-t*.82)*10,j=i*6;rainData[j]=xx;rainData[j+1]=yy;rainData[j+2]=zz;rainData[j+3]=xx-wind*.23;rainData[j+4]=yy+.40+storm*.24;rainData[j+5]=zz+.06}}rain.visible=rc>0;rg.setDrawRange(0,rc*2);rg.attributes.position.needsUpdate=true;
