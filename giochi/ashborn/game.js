@@ -6,7 +6,7 @@ import {createWonders} from './wonders.js?v=39';
 import {createCharacter} from './character.js?v=35';
 import {createCombatAim} from './combat-aim.js?v=35';
 import {enclosed,entrance,makeInterior} from './interiors.js?v=21';
-import {terrainArt,weatherAt,createEnvironment} from './atmosphere.js?v=38';
+import {terrainArt,weatherAt,createEnvironment} from './atmosphere.js?v=39';
 import {SITES,worldHeight,oldBase,protectedSite,buildWorld,createDetails} from './world.js?v=21';
 import {LABELS as labels,SKINS as skinColors,HAIRS as hairColors,cleanLook,choiceHeight} from './choices.js?v=10';
 const $=id=>document.getElementById(id),all=s=>[...document.querySelectorAll(s)],KEY='ashborn-save-v1',PROFILE_KEY='ashborn-character-v1',SETTINGS_KEY='ashborn-settings-v1',TAU=Math.PI*2;
